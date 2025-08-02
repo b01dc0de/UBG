@@ -82,6 +82,7 @@
     <ClCompile Include="src\UBG_PlatformWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\UBG.h" />
     <ClInclude Include="src\UBG_Platform.h" />
     <ClInclude Include="src\UBG_PlatformWin32.h" />
   </ItemGroup>

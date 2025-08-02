@@ -20,5 +20,8 @@
     <ClInclude Include="src\UBG_Platform.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\UBG.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
