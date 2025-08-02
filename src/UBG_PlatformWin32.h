@@ -7,6 +7,7 @@
 struct UBG_Platform_Win32
 {
     static HINSTANCE hInstance;
+    static HWND hWindow;
     //static HINSTANCE hPrevInstance;
     //static LPSTR lpCmdLine;
     //static int nShowCmd;

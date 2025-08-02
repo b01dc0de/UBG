@@ -15,6 +15,7 @@ void Outf(const char* Fmt, ...)
 }
 
 HINSTANCE UBG_Platform_Win32::hInstance = {};
+HWND UBG_Platform_Win32::hWindow = {};
 //HINSTANCE UBG_Platform_Win32::hPrevInstance = {};
 //LPSTR UBG_Platform_Win32::lpCmdLine = {};
 //int UBG_Platform_Win32::nShowCmd = {};
@@ -50,7 +51,15 @@ LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void UBG_Platform_Win32::Tick()
 {
-
+    if (GlobalState::bRunning)
+    {
+        MSG Msg = {};
+        while (PeekMessageA(&Msg, hWindow, 0, 0, TRUE))
+        {
+            TranslateMessage(&Msg);
+            DispatchMessageA(&Msg);
+        }
+    }
 }
 
 bool UBG_Platform_Win32::Init()
@@ -58,6 +67,46 @@ bool UBG_Platform_Win32::Init()
     bool bResult = true;
 
     OutputDebugStringA("UBG -- INIT\n");
+
+    constexpr int DefaultWindowWidth = 1280;
+    constexpr int DefaultWindowHeight = 720;
+
+    int WindowWidth = DefaultWindowWidth;
+    int WindowHeight = DefaultWindowHeight;
+
+    RECT WorkArea = {};
+    if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
+    {
+        WindowWidth = WorkArea.right - WorkArea.left;
+        WindowHeight = WorkArea.bottom - WorkArea.top;
+    }
+
+    LPCSTR WindowClassName = "UntitledBulletGame";
+    DWORD WindowStyle = WS_OVERLAPPEDWINDOW;
+    DWORD WindowExStyle = 0;
+
+    WNDCLASSEXA WindowClass = {};
+    WindowClass.cbSize = sizeof(WNDCLASSEXA);
+    WindowClass.style = CS_HREDRAW | CS_VREDRAW;
+    WindowClass.lpfnWndProc = WndProc_Win32;
+    WindowClass.cbClsExtra = 0;
+    WindowClass.cbWndExtra = 0;
+    WindowClass.hInstance = hInstance;
+    WindowClass.lpszClassName = WindowClassName;
+    (void)RegisterClassExA(&WindowClass);
+
+    hWindow = CreateWindowExA(
+        WindowExStyle,
+        WindowClassName,
+        WindowClassName,
+        WindowStyle,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        WindowWidth, WindowHeight,
+        nullptr, nullptr, nullptr, nullptr
+    );
+
+    ShowWindow(hWindow, SW_SHOWNORMAL);
 
     return bResult;
 }
