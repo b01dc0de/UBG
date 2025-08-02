@@ -38,6 +38,7 @@ extern void Outf(const char* Fmt, ...);
 #include "UBG_Gfx.h"
 // Common project headers
 #include "Clock.h"
+#include "Math.h"
 
 #endif // UBG_H
 

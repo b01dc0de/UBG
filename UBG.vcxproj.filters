@@ -18,6 +18,9 @@
     <ClCompile Include="src\Clock.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Math.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\UBG_PlatformWin32.h">
@@ -36,6 +39,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\Clock.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Math.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

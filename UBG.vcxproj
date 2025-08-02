@@ -79,12 +79,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Clock.cpp" />
+    <ClCompile Include="src\Math.cpp" />
     <ClCompile Include="src\UBG.cpp" />
     <ClCompile Include="src\UBG_GfxDX11.cpp" />
     <ClCompile Include="src\UBG_PlatformWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Clock.h" />
+    <ClInclude Include="src\Math.h" />
     <ClInclude Include="src\UBG.h" />
     <ClInclude Include="src\UBG_Gfx.h" />
     <ClInclude Include="src\UBG_GfxDX11.h" />

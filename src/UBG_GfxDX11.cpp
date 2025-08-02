@@ -10,19 +10,12 @@ IDXGISwapChain1* UBG_Gfx_DX11::SwapChain = {};
 ID3D11Texture2D* UBG_Gfx_DX11::BackBuffer = {};
 ID3D11RenderTargetView* UBG_Gfx_DX11::RenderTargetView = {};
 
-void tmp_lerp4(const float* A, const float* B, float t, float* C) {
-    C[0] = A[0] + t * (B[0] - A[0]);
-    C[1] = A[1] + t * (B[1] - A[1]);
-    C[2] = A[2] + t * (B[2] - A[2]);
-    C[3] = A[3] + t * (B[3] - A[3]);
-}
-
-void tmp_GetClearColor(float* OutClearColor)
+void GetClearColor(v4f& OutClearColor)
 {
     constexpr bool bCycleColorsBG = true;
     if (bCycleColorsBG)
     {
-        constexpr float Colors[][4] = {
+        constexpr v4f Colors[] = {
             { 1.0f, 0.0f, 0.0f, 1.0f },
             { 0.0f, 1.0f, 0.0f, 1.0f },
             { 0.0f, 0.0f, 0.1f, 1.0f },
@@ -36,14 +29,11 @@ void tmp_GetClearColor(float* OutClearColor)
         float CurrTime = (float)ClockT::CurrTime;
         float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
         int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
-        tmp_lerp4(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor, OutClearColor);
+        lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor, OutClearColor);
     }
     else
     {
-        OutClearColor[0] = 242.0f / 255.0f;
-        OutClearColor[1] = 80.0f / 255.0f;
-        OutClearColor[2] = 34.0f / 255.0f;
-        OutClearColor[3] = 1.0f;
+        OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
     }
 }
 
@@ -51,9 +41,9 @@ void UBG_Gfx_DX11::DrawBegin()
 {
     Context->OMSetRenderTargets(1, &RenderTargetView, nullptr);
 
-    float ClearColor[4] = { };
-    tmp_GetClearColor(ClearColor);
-    Context->ClearRenderTargetView(RenderTargetView, ClearColor);
+    v4f ClearColor = { };
+    GetClearColor(ClearColor);
+    Context->ClearRenderTargetView(RenderTargetView, (float*)&ClearColor);
 }
 
 void UBG_Gfx_DX11::DrawEnd()

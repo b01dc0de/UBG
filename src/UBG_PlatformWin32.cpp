@@ -65,7 +65,7 @@ bool UBG_Platform_Win32::Init()
 {
     bool bResult = true;
 
-    OutputDebugStringA("UBG -- INIT\n");
+    //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
     RECT WorkArea = {};
     if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
@@ -107,8 +107,6 @@ bool UBG_Platform_Win32::Init()
 bool UBG_Platform_Win32::Term()
 {
     bool bResult = true;
-
-    OutputDebugStringA("UBG -- TERM\n");
 
     return bResult;
 }
