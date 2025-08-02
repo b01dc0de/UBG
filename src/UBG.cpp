@@ -9,17 +9,23 @@ int GlobalState::Height = DefaultWindowHeight;
 
 bool UBG_Init()
 {
-    return UBG_PlatformT::Init() && UBG_GfxT::Init();
+    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Init();
+    ClockT::Init();
+    return bResult;
 }
 
 void UBG_GameLoop()
 {
+    ClockT::Tick();
     UBG_PlatformT::Tick();
+    UBG_GfxT::DrawBegin();
+    UBG_GfxT::DrawEnd();
 }
 
 bool UBG_Term()
 {
-    return UBG_PlatformT::Term();
+    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Term();
+    return bResult;
 }
 
 int UBG_Main()

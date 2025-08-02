@@ -33,7 +33,7 @@ void tmp_GetClearColor(float* OutClearColor)
         constexpr size_t NumColors = ARRAY_SIZE(Colors);
 
         // TODO: Implement clock time
-        float CurrTime = (float)0.0f;
+        float CurrTime = (float)ClockT::CurrTime;
         float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
         int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
         tmp_lerp4(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor, OutClearColor);
@@ -54,13 +54,11 @@ void UBG_Gfx_DX11::DrawBegin()
     float ClearColor[4] = { };
     tmp_GetClearColor(ClearColor);
     Context->ClearRenderTargetView(RenderTargetView, ClearColor);
-
-    SwapChain->Present(0, 0);
 }
 
 void UBG_Gfx_DX11::DrawEnd()
 {
-
+    SwapChain->Present(0, 0);
 }
 
 bool UBG_Gfx_DX11::Init()

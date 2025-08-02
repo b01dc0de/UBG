@@ -15,6 +15,9 @@
     <ClCompile Include="src\UBG_GfxDX11.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Clock.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\UBG_PlatformWin32.h">
@@ -30,6 +33,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\UBG_GfxDX11.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Clock.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
