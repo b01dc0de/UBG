@@ -9,6 +9,8 @@
 struct GlobalState
 {
     static bool bRunning;
+    static int Width;
+    static int Height;
 };
 
 extern void Outf(const char* Fmt, ...);
@@ -17,8 +19,10 @@ extern void Outf(const char* Fmt, ...);
 #define ASSERT(Expr) if (!(Expr)) { Outf("[assert] FAILED\n\tExp: %s\n\tFile: %s\tLine: %d\n\tFunc: %s", #Expr, __FILE__, __LINE__, __FUNCSIG__); DEBUG_BREAKPOINT(); }
 #define ARRAY_SIZE(Array) (sizeof((Array)) / sizeof((Array)[0]))
 
-// UBG Platform
+// UBG Platform impl
 #include "UBG_Platform.h"
+// UBG Graphics backend impl
+#include "UBG_Gfx.h"
 
 #endif // UBG_H
 

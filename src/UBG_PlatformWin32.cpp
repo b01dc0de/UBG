@@ -1,5 +1,4 @@
 #include "UBG.h"
-#if UBG_PLATFORM_WIN32()
 
 void Outf(const char* Fmt, ...)
 {
@@ -68,17 +67,11 @@ bool UBG_Platform_Win32::Init()
 
     OutputDebugStringA("UBG -- INIT\n");
 
-    constexpr int DefaultWindowWidth = 1280;
-    constexpr int DefaultWindowHeight = 720;
-
-    int WindowWidth = DefaultWindowWidth;
-    int WindowHeight = DefaultWindowHeight;
-
     RECT WorkArea = {};
     if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
     {
-        WindowWidth = WorkArea.right - WorkArea.left;
-        WindowHeight = WorkArea.bottom - WorkArea.top;
+        GlobalState::Width = WorkArea.right - WorkArea.left;
+        GlobalState::Height = WorkArea.bottom - WorkArea.top;
     }
 
     LPCSTR WindowClassName = "UntitledBulletGame";
@@ -102,7 +95,7 @@ bool UBG_Platform_Win32::Init()
         WindowStyle,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        WindowWidth, WindowHeight,
+        GlobalState::Width, GlobalState::Height,
         nullptr, nullptr, nullptr, nullptr
     );
 
@@ -141,4 +134,3 @@ int WinMain
     return Result;
 }
 
-#endif // UBG_PLATFORM_WIN32()

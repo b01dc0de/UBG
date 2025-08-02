@@ -1,10 +1,15 @@
 #include "UBG.h"
 
-bool GlobalState::bRunning = false;
+constexpr int DefaultWindowWidth = 1280;
+constexpr int DefaultWindowHeight = 720;
+
+bool GlobalState::bRunning = {};
+int GlobalState::Width = DefaultWindowWidth;
+int GlobalState::Height = DefaultWindowHeight;
 
 bool UBG_Init()
 {
-    return UBG_PlatformT::Init();
+    return UBG_PlatformT::Init() && UBG_GfxT::Init();
 }
 
 void UBG_GameLoop()

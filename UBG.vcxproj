@@ -79,10 +79,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\UBG.cpp" />
+    <ClCompile Include="src\UBG_GfxDX11.cpp" />
     <ClCompile Include="src\UBG_PlatformWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\UBG.h" />
+    <ClInclude Include="src\UBG_Gfx.h" />
+    <ClInclude Include="src\UBG_GfxDX11.h" />
     <ClInclude Include="src\UBG_Platform.h" />
     <ClInclude Include="src\UBG_PlatformWin32.h" />
   </ItemGroup>
