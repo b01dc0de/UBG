@@ -6,6 +6,8 @@ u64 ClockT::CurrTs= {};
 f64 ClockT::CurrTime = {};
 f64 ClockT::LastFrameDuration = {};
 
+static_assert(UBG_PLATFORM_IMPL_WIN32(), "[build] ClockT isn't implemented for non-Win32 platforms! (yet)");
+
 void ClockT::Init()
 {
     LARGE_INTEGER Timestamp = {};
@@ -30,7 +32,7 @@ void ClockT::Tick()
     CurrTs = Timestamp.QuadPart;
     CurrTime = (double)(CurrTs - Epoch) / (double)Freq;
 
-    constexpr bool bDebugPrint = true;
+    constexpr bool bDebugPrint = false;
     if (bDebugPrint)
     {
         static double LastTimePrint = 0.0f;

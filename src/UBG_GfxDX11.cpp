@@ -1,6 +1,8 @@
 #include "UBG.h"
 
+// NOTE: This include lib format is supported only via MSVC, keep in mind if we want to support other compilers on Windows
 #pragma comment(lib, "D3D11.lib")
+#pragma comment(lib, "D3DCompiler.lib")
 #pragma comment(lib, "DXGI.lib")
 
 ID3D11Device* UBG_Gfx_DX11::Device = {};
@@ -9,6 +11,45 @@ D3D_FEATURE_LEVEL UBG_Gfx_DX11::FeatureLevel = {};
 IDXGISwapChain1* UBG_Gfx_DX11::SwapChain = {};
 ID3D11Texture2D* UBG_Gfx_DX11::BackBuffer = {};
 ID3D11RenderTargetView* UBG_Gfx_DX11::RenderTargetView = {};
+
+ID3D11RasterizerState* UBG_Gfx_DX11::RasterState = {};
+ID3D11Texture2D* UBG_Gfx_DX11::DepthStencil = {};
+ID3D11DepthStencilView* UBG_Gfx_DX11::DepthStencilView = {};
+
+struct DrawStateT
+{
+    ID3D11InputLayout* InputLayout;
+    ID3D11VertexShader* VertexShader;
+    ID3D11PixelShader* PixelShader;
+};
+
+struct VxColor
+{
+    v4f Pos;
+    v4f Col;
+};
+
+struct MeshStateT
+{
+    size_t VertexSize;
+    size_t NumVerts;
+    size_t NumInds;
+    ID3D11Buffer* VxBuffer;
+    ID3D11Buffer* IxBuffer;
+};
+
+struct GfxPrivData
+{
+    static DrawStateT DrawColor;
+    static MeshStateT MeshTriangle;
+
+    static void Draw(ID3D11DeviceContext* Context);
+    static bool Init(ID3D11Device* Device);
+    static bool Term();
+};
+
+DrawStateT GfxPrivData::DrawColor = {};
+MeshStateT GfxPrivData::MeshTriangle = {};
 
 void GetClearColor(v4f& OutClearColor)
 {
@@ -25,7 +66,6 @@ void GetClearColor(v4f& OutClearColor)
         constexpr float StepDurationSeconds = 2.0f;
         constexpr size_t NumColors = ARRAY_SIZE(Colors);
 
-        // TODO: Implement clock time
         float CurrTime = (float)ClockT::CurrTime;
         float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
         int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
@@ -37,18 +77,225 @@ void GetClearColor(v4f& OutClearColor)
     }
 }
 
+int CompileShaderHLSL
+(
+    const wchar_t* SourceFileName,
+    LPCSTR EntryPointFunction,
+    LPCSTR ShaderProfile,
+    ID3DBlob** OutShaderBlob,
+    const D3D_SHADER_MACRO* Defines
+)
+{
+    if (SourceFileName == nullptr || EntryPointFunction == nullptr || ShaderProfile == nullptr || OutShaderBlob == nullptr)
+    {
+        return E_INVALIDARG;
+    }
+
+    HRESULT Result = S_OK;
+
+    UINT ShaderCompileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if _DEBUG
+    ShaderCompileFlags |= D3DCOMPILE_DEBUG;
+    ShaderCompileFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif // _DEBUG
+
+    ID3DBlob* ShaderBlob = nullptr;
+    ID3DBlob* ErrorBlob = nullptr;
+
+    Result = D3DCompileFromFile
+    (
+        SourceFileName,
+        Defines,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        EntryPointFunction,
+        ShaderProfile,
+        ShaderCompileFlags,
+        0,
+        &ShaderBlob,
+        &ErrorBlob
+    );
+
+    if (FAILED(Result) && ShaderBlob)
+    {
+        ShaderBlob->Release();
+        ShaderBlob = nullptr;
+    }
+    if (ErrorBlob)
+    {
+        OutputDebugStringA((char*)ErrorBlob->GetBufferPointer());
+        ErrorBlob->Release();
+    }
+
+    *OutShaderBlob = ShaderBlob;
+
+    return Result;
+}
+
+DrawStateT CreateDrawState
+(
+    ID3D11Device* Device,
+    const wchar_t* ShaderFileName,
+    const D3D_SHADER_MACRO* Defines,
+    const D3D11_INPUT_ELEMENT_DESC* InputElements,
+    size_t NumInputElements
+)
+{
+    ASSERT(Device);
+    ASSERT(ShaderFileName);
+    ASSERT(InputElements);
+
+    ID3DBlob* VSBlob = nullptr;
+    ID3DBlob* PSBlob = nullptr;
+
+    static const char* VxShaderMain = "VSMain";
+    static const char* VxShaderProfile = "vs_5_0";
+    static const char* PxShaderMain = "PSMain";
+    static const char* PxShaderProfile = "ps_5_0";
+    CompileShaderHLSL(ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
+    CompileShaderHLSL(ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
+
+    DrawStateT Result;
+
+    if (VSBlob && PSBlob)
+    {
+        Device->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr, &Result.VertexShader);
+        Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
+
+        Device->CreateInputLayout(InputElements, (UINT)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
+    }
+    SafeRelease(VSBlob);
+    SafeRelease(PSBlob);
+
+    return Result;
+}
+
+MeshStateT CreateMeshState
+(
+    ID3D11Device* InDevice,
+    size_t VertexSize,
+    size_t NumVertices,
+    void* VertexData,
+    size_t NumIndices,
+    unsigned int* IndexData
+)
+{
+    ASSERT(VertexData);
+
+    MeshStateT Result;
+
+    Result.VertexSize = VertexSize;
+    Result.NumVerts = NumVertices;
+    Result.NumInds = NumIndices;
+
+    size_t VxDataSize = VertexSize * NumVertices;
+    D3D11_BUFFER_DESC VertexBufferDesc = { VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
+    D3D11_SUBRESOURCE_DATA VertexBufferInitData = { VertexData, 0, 0 };
+    InDevice->CreateBuffer(&VertexBufferDesc, &VertexBufferInitData, &Result.VxBuffer);
+
+    if (IndexData)
+    {
+        size_t IxDataSize = NumIndices * sizeof(unsigned int);
+        D3D11_BUFFER_DESC IndexBufferDesc = { IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
+        D3D11_SUBRESOURCE_DATA IndexBufferInitData = { IndexData, 0, 0 };
+        InDevice->CreateBuffer(&IndexBufferDesc, &IndexBufferInitData, &Result.IxBuffer);
+    }
+
+    return Result;
+}
+
+void GfxPrivData::Draw(ID3D11DeviceContext* Context)
+{
+    // Draw MeshTriangle using DrawColor:
+    {
+        UINT VxStride = MeshTriangle.VertexSize;
+        UINT VxOffset = 0;
+
+        Context->IASetInputLayout(DrawColor.InputLayout);
+        Context->IASetVertexBuffers(0, 1, &MeshTriangle.VxBuffer, &VxStride, &VxOffset);
+        Context->IASetIndexBuffer(MeshTriangle.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        Context->VSSetShader(DrawColor.VertexShader, nullptr, 0);
+        Context->PSSetShader(DrawColor.PixelShader, nullptr, 0);
+
+        UINT StartIdx = 0;
+        UINT StartVx = 0;
+        Context->DrawIndexed(MeshTriangle.NumInds, StartIdx, StartVx);
+    }
+}
+
+bool GfxPrivData::Init(ID3D11Device* Device)
+{
+    // Shader color:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawColor = CreateDrawState
+        (
+            Device,
+            L"src/hlsl/BaseShader.hlsl",
+            nullptr,
+            InputElements,
+            ARRAY_SIZE(InputElements)
+        );
+    }
+
+    // Mesh triangle:
+    {
+        VxColor TriangleVerts[] = {
+            { { 0.0f, 0.5f, 0.5f, 1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
+            { { -0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
+            { { +0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
+        };
+
+        unsigned int TriangleInds[] = { 0, 2, 1 };
+
+        MeshTriangle = CreateMeshState
+        (
+            Device,
+            sizeof(VxColor),
+            ARRAY_SIZE(TriangleVerts),
+            TriangleVerts,
+            ARRAY_SIZE(TriangleInds),
+            TriangleInds
+        );
+    }
+
+    return true;
+}
+
+bool GfxPrivData::Term()
+{
+    return true;
+}
+
 void UBG_Gfx_DX11::DrawBegin()
 {
-    Context->OMSetRenderTargets(1, &RenderTargetView, nullptr);
+    Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
 
     v4f ClearColor = { };
     GetClearColor(ClearColor);
     Context->ClearRenderTargetView(RenderTargetView, (float*)&ClearColor);
+    Context->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
 void UBG_Gfx_DX11::DrawEnd()
 {
-    SwapChain->Present(0, 0);
+    UINT SyncInterval = 0;
+    UINT PresentFlags = 0;
+    DXGI_PRESENT_PARAMETERS PresentParams = {};
+    SwapChain->Present1(SyncInterval, PresentFlags, &PresentParams);
+}
+
+void UBG_Gfx_DX11::Draw()
+{
+    DrawBegin();
+    GfxPrivData::Draw(Context);
+    DrawEnd();
 }
 
 bool UBG_Gfx_DX11::Init()
@@ -105,7 +352,49 @@ bool UBG_Gfx_DX11::Init()
 
     (void)Device->CreateRenderTargetView(BackBuffer, nullptr, &RenderTargetView);
 
-    Context->OMSetRenderTargets(1, &RenderTargetView, nullptr);
+    D3D11_TEXTURE2D_DESC DepthDesc = {};
+    DepthDesc.Width = GlobalState::Width;
+    DepthDesc.Height = GlobalState::Height;
+    DepthDesc.MipLevels = 1;
+    DepthDesc.ArraySize = 1;
+    DepthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    DepthDesc.SampleDesc = { 1, 0 };
+    DepthDesc.Usage = D3D11_USAGE_DEFAULT;
+    DepthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    DepthDesc.CPUAccessFlags = 0;
+    DepthDesc.MiscFlags = 0;
+    Device->CreateTexture2D(&DepthDesc, nullptr, &DepthStencil);
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC DepthStencilViewDesc = {};
+    DepthStencilViewDesc.Format = DepthDesc.Format;
+    DepthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+    DepthStencilViewDesc.Texture2D.MipSlice = 0;
+    Device->CreateDepthStencilView(DepthStencil, &DepthStencilViewDesc, &DepthStencilView);
+
+    D3D11_RASTERIZER_DESC RasterDesc = {};
+    RasterDesc.FillMode = D3D11_FILL_SOLID;
+    RasterDesc.CullMode = D3D11_CULL_BACK;
+    RasterDesc.FrontCounterClockwise = TRUE;
+    RasterDesc.DepthClipEnable = TRUE;
+    RasterDesc.ScissorEnable = FALSE;
+    RasterDesc.MultisampleEnable = TRUE;
+    RasterDesc.AntialiasedLineEnable = TRUE;
+    Device->CreateRasterizerState(&RasterDesc, &RasterState);
+
+    D3D11_VIEWPORT ViewportDesc = {};
+    ViewportDesc.TopLeftX = 0.0f;
+    ViewportDesc.TopLeftY = 0.0f;
+    ViewportDesc.Width = (FLOAT)GlobalState::Width;
+    ViewportDesc.Height = (FLOAT)GlobalState::Height;
+    ViewportDesc.MinDepth = 0.0f;
+    ViewportDesc.MaxDepth = 1.0f;
+    Context->RSSetViewports(1, &ViewportDesc);
+
+    Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
+
+    GfxPrivData::Init(Device);
+
+    // TODO: Actually check if we're initing state correctly (and not failing)
 
     return true;
 }

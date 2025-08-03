@@ -18,8 +18,7 @@ void UBG_GameLoop()
 {
     ClockT::Tick();
     UBG_PlatformT::Tick();
-    UBG_GfxT::DrawBegin();
-    UBG_GfxT::DrawEnd();
+    UBG_GfxT::Draw();
 }
 
 bool UBG_Term()
