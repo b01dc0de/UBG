@@ -246,7 +246,20 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     // Draw MeshQuad using DrawTexture:
     {
+        UINT VxStride = MeshQuad.VertexSize;
+        UINT VxOffset = 0;
 
+        Context->IASetInputLayout(DrawTexture.InputLayout);
+        Context->IASetVertexBuffers(0, 1, &MeshQuad.VxBuffer, &VxStride, &VxOffset);
+        Context->IASetIndexBuffer(MeshQuad.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        Context->VSSetShader(DrawTexture.VertexShader, nullptr, 0);
+        Context->PSSetShader(DrawTexture.PixelShader, nullptr, 0);
+
+        UINT StartIdx = 0;
+        UINT StartVx = 0;
+        Context->DrawIndexed(MeshQuad.NumInds, StartIdx, StartVx);
     }
 
     // Draw MeshQuadMin using DrawUnicolor:
@@ -258,7 +271,6 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         Context->IASetVertexBuffers(0, 1, &MeshQuadMin.VxBuffer, &VxStride, &VxOffset);
         Context->IASetIndexBuffer(MeshQuadMin.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
         Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 
         v4f UnicolorData[4] = { };
         GetClearColor(UnicolorData[0]);
@@ -274,7 +286,6 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         UINT StartIdx = 0;
         UINT StartVx = 0;
         Context->DrawIndexed(MeshQuadMin.NumInds, StartIdx, StartVx);
-
     }
 }
 
@@ -369,6 +380,17 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
             { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
         };
+
+        // TODO: Remove this once we have WVP transforms implemented, this is just to not draw the tex quad + unicolor quad in the same place
+        constexpr bool bTODORemoveThisTempQuadOffsetLater = true;
+        if (bTODORemoveThisTempQuadOffsetLater)
+        {
+            for (int VxIdx = 0; VxIdx < ARRAY_SIZE(QuadVerts); VxIdx++)
+            {
+                QuadVerts[VxIdx].Pos.X -= 0.5f;
+                QuadVerts[VxIdx].Pos.Y -= 0.5f;
+            }
+        }
 
         unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
 
