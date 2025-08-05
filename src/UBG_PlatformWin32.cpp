@@ -32,7 +32,7 @@ LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 GlobalState::bRunning = false;
             }
-        }
+        } break;
         case WM_CLOSE:
         case WM_DESTROY:
         case WM_QUIT:
