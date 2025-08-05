@@ -53,6 +53,8 @@ struct GfxPrivData
     static ID3D11Texture2D* DefaultTexture;
     static ID3D11ShaderResourceView* DefaultTextureSRV;
     static ID3D11SamplerState* DefaultSamplerState;
+    static ID3D11Buffer* WorldBuffer;
+    static ID3D11Buffer* ViewProjBuffer;
 
     static DrawStateT DrawColor;
     static DrawStateT DrawTexture;
@@ -71,6 +73,8 @@ struct GfxPrivData
 ID3D11Texture2D* GfxPrivData::DefaultTexture = {};
 ID3D11ShaderResourceView* GfxPrivData::DefaultTextureSRV = {};
 ID3D11SamplerState* GfxPrivData::DefaultSamplerState = {};
+ID3D11Buffer* GfxPrivData::WorldBuffer = {};
+ID3D11Buffer* GfxPrivData::ViewProjBuffer = {};
 
 DrawStateT GfxPrivData::DrawColor = {};
 DrawStateT GfxPrivData::DrawTexture = {};
@@ -234,6 +238,12 @@ MeshStateT CreateMeshState
 
 void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 {
+    ID3D11Buffer* WVPBuffers[] = {WorldBuffer, ViewProjBuffer};
+    m4f IdentityWorld = m4f::Identity();
+    m4f IdentityViewProj[] = { m4f::Identity(), m4f::Identity() };
+    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &IdentityWorld, (UINT)sizeof(m4f), 0);
+    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, IdentityViewProj, (UINT)sizeof(IdentityViewProj), 0);
+
     // Draw MeshTriangle using DrawColor:
     {
         UINT VxStride = MeshTriangle.VertexSize;
@@ -246,6 +256,8 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
         Context->VSSetShader(DrawColor.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawColor.PixelShader, nullptr, 0);
+        Context->VSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
+        Context->PSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -268,6 +280,8 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         Context->PSSetShaderResources(0, 1, &DefaultTextureSRV);
         Context->VSSetSamplers(0, 1, &DefaultSamplerState);
         Context->PSSetSamplers(0, 1, &DefaultSamplerState);
+        Context->VSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
+        Context->PSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -290,10 +304,12 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
         Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
 
+        ID3D11Buffer* UnicolorShaderBuffers[] = { WorldBuffer, ViewProjBuffer, UnicolorBuffer };
+
         Context->VSSetShader(DrawUnicolor.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawUnicolor.PixelShader, nullptr, 0);
-        Context->VSSetConstantBuffers(0, 1, &UnicolorBuffer);
-        Context->PSSetConstantBuffers(0, 1, &UnicolorBuffer);
+        Context->VSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
+        Context->PSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -352,6 +368,24 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
     }
 
+    D3D_SHADER_MACRO DefaultDefines[] =
+    {
+        "ENABLE_WVP_TRANSFORM", "1",
+        nullptr, nullptr
+    };
+
+    // World / ViewProj cbuffers
+    {
+        D3D11_BUFFER_DESC CommonBufferDesc = {};
+        CommonBufferDesc.ByteWidth = sizeof(m4f);
+        CommonBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        CommonBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        CommonBufferDesc.CPUAccessFlags = 0;
+        Device->CreateBuffer(&CommonBufferDesc, nullptr, &WorldBuffer);
+        CommonBufferDesc.ByteWidth = sizeof(m4f) * 2;
+        Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
+    }
+
     // Shader color:
     {
         D3D11_INPUT_ELEMENT_DESC InputElements[] =
@@ -364,7 +398,7 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         (
             Device,
             L"src/hlsl/BaseShaderColor.hlsl",
-            nullptr,
+            DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements)
         );
@@ -382,7 +416,7 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         (
             Device,
             L"src/hlsl/BaseShaderTexture.hlsl",
-            nullptr,
+            DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements)
         );
@@ -399,7 +433,7 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         (
             Device,
             L"src/hlsl/BaseShaderUnicolor.hlsl",
-            nullptr,
+            DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements)
         );
