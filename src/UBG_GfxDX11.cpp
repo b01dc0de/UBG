@@ -50,6 +50,10 @@ struct MeshStateT
 
 struct GfxPrivData
 {
+    static ID3D11Texture2D* DefaultTexture;
+    static ID3D11ShaderResourceView* DefaultTextureSRV;
+    static ID3D11SamplerState* DefaultSamplerState;
+
     static DrawStateT DrawColor;
     static DrawStateT DrawTexture;
     static DrawStateT DrawUnicolor;
@@ -63,6 +67,10 @@ struct GfxPrivData
     static bool Init(ID3D11Device* Device);
     static bool Term();
 };
+
+ID3D11Texture2D* GfxPrivData::DefaultTexture = {};
+ID3D11ShaderResourceView* GfxPrivData::DefaultTextureSRV = {};
+ID3D11SamplerState* GfxPrivData::DefaultSamplerState = {};
 
 DrawStateT GfxPrivData::DrawColor = {};
 DrawStateT GfxPrivData::DrawTexture = {};
@@ -256,6 +264,10 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
         Context->VSSetShader(DrawTexture.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawTexture.PixelShader, nullptr, 0);
+        Context->VSSetShaderResources(0, 1, &DefaultTextureSRV);
+        Context->PSSetShaderResources(0, 1, &DefaultTextureSRV);
+        Context->VSSetSamplers(0, 1, &DefaultSamplerState);
+        Context->PSSetSamplers(0, 1, &DefaultSamplerState);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -278,10 +290,10 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
         Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
 
-        Context->VSSetConstantBuffers(0, 1, &UnicolorBuffer);
-        Context->PSSetConstantBuffers(0, 1, &UnicolorBuffer);
         Context->VSSetShader(DrawUnicolor.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawUnicolor.PixelShader, nullptr, 0);
+        Context->VSSetConstantBuffers(0, 1, &UnicolorBuffer);
+        Context->PSSetConstantBuffers(0, 1, &UnicolorBuffer);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -291,6 +303,55 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
 bool GfxPrivData::Init(ID3D11Device* Device)
 {
+    // Default texture / sampler:
+    {
+        struct RGBA { u8 R; u8 G; u8 B; u8 A; };
+
+        constexpr int DefaultImageSize = 16;
+        RGBA DefaultImage[DefaultImageSize * DefaultImageSize];
+        for (int RowIdx = 0; RowIdx < DefaultImageSize; RowIdx++)
+        {
+            for (int ColIdx = 0; ColIdx < DefaultImageSize; ColIdx++)
+            {
+                if ((RowIdx + ColIdx) % 2 == 0)
+                {
+                    DefaultImage[RowIdx * DefaultImageSize + ColIdx] = { 255, 73, 173, 255 };
+                }
+                else
+                {
+                    DefaultImage[RowIdx * DefaultImageSize + ColIdx] = { 0, 0, 0, 255 };
+                }
+            }
+        }
+        DefaultImage[0] = { 255, 0, 0, 255 };
+        DefaultImage[DefaultImageSize - 1] = { 0, 255, 0, 255 };
+        DefaultImage[(DefaultImageSize - 1) * DefaultImageSize] = { 0, 0, 255, 255 };
+        DefaultImage[(DefaultImageSize - 1) * DefaultImageSize + (DefaultImageSize - 1)] = { 255, 255, 255, 255 };
+
+        D3D11_SUBRESOURCE_DATA TextureResDataDesc[] = { {} };
+        TextureResDataDesc[0].pSysMem = DefaultImage;
+        TextureResDataDesc[0].SysMemPitch = sizeof(RGBA) * DefaultImageSize;
+        TextureResDataDesc[0].SysMemSlicePitch = sizeof(DefaultImage);
+        D3D11_TEXTURE2D_DESC DefaultTextureDesc = {};
+        DefaultTextureDesc.Width = DefaultImageSize;
+        DefaultTextureDesc.Height = DefaultImageSize;
+        DefaultTextureDesc.MipLevels = 1;
+        DefaultTextureDesc.ArraySize = 1;
+        DefaultTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        DefaultTextureDesc.SampleDesc = { 1, 0 };
+        DefaultTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+        DefaultTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        Device->CreateTexture2D(&DefaultTextureDesc, &TextureResDataDesc[0], &DefaultTexture);
+        Device->CreateShaderResourceView(DefaultTexture, nullptr, &DefaultTextureSRV);
+
+        D3D11_SAMPLER_DESC DefaultSamplerDesc = {};
+        DefaultSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+        DefaultSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        DefaultSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        DefaultSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
+    }
+
     // Shader color:
     {
         D3D11_INPUT_ELEMENT_DESC InputElements[] =
