@@ -14,7 +14,6 @@ struct UBG_Gfx_DX11
     static IDXGISwapChain1* SwapChain;
     static ID3D11Texture2D* BackBuffer;
     static ID3D11RenderTargetView* RenderTargetView;
-
     static ID3D11RasterizerState* RasterState;
     static ID3D11Texture2D* DepthStencil;
     static ID3D11DepthStencilView* DepthStencilView;

@@ -11,7 +11,6 @@ D3D_FEATURE_LEVEL UBG_Gfx_DX11::FeatureLevel = {};
 IDXGISwapChain1* UBG_Gfx_DX11::SwapChain = {};
 ID3D11Texture2D* UBG_Gfx_DX11::BackBuffer = {};
 ID3D11RenderTargetView* UBG_Gfx_DX11::RenderTargetView = {};
-
 ID3D11RasterizerState* UBG_Gfx_DX11::RasterState = {};
 ID3D11Texture2D* UBG_Gfx_DX11::DepthStencil = {};
 ID3D11DepthStencilView* UBG_Gfx_DX11::DepthStencilView = {};
@@ -29,6 +28,17 @@ struct VxColor
     v4f Col;
 };
 
+struct VxTex
+{
+    v4f Pos;
+    v2f UV;
+};
+
+struct VxMin
+{
+    v4f Pos;
+};
+
 struct MeshStateT
 {
     size_t VertexSize;
@@ -41,7 +51,13 @@ struct MeshStateT
 struct GfxPrivData
 {
     static DrawStateT DrawColor;
+    static DrawStateT DrawTexture;
+    static DrawStateT DrawUnicolor;
+    static ID3D11Buffer* UnicolorBuffer;
+
     static MeshStateT MeshTriangle;
+    static MeshStateT MeshQuad;
+    static MeshStateT MeshQuadMin;
 
     static void Draw(ID3D11DeviceContext* Context);
     static bool Init(ID3D11Device* Device);
@@ -49,7 +65,12 @@ struct GfxPrivData
 };
 
 DrawStateT GfxPrivData::DrawColor = {};
+DrawStateT GfxPrivData::DrawTexture = {};
+DrawStateT GfxPrivData::DrawUnicolor = {};
+ID3D11Buffer* GfxPrivData::UnicolorBuffer = {};
 MeshStateT GfxPrivData::MeshTriangle = {};
+MeshStateT GfxPrivData::MeshQuad = {};
+MeshStateT GfxPrivData::MeshQuadMin = {};
 
 void GetClearColor(v4f& OutClearColor)
 {
@@ -222,6 +243,39 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         UINT StartVx = 0;
         Context->DrawIndexed(MeshTriangle.NumInds, StartIdx, StartVx);
     }
+
+    // Draw MeshQuad using DrawTexture:
+    {
+
+    }
+
+    // Draw MeshQuadMin using DrawUnicolor:
+    {
+        UINT VxStride = MeshQuadMin.VertexSize;
+        UINT VxOffset = 0;
+
+        Context->IASetInputLayout(DrawUnicolor.InputLayout);
+        Context->IASetVertexBuffers(0, 1, &MeshQuadMin.VxBuffer, &VxStride, &VxOffset);
+        Context->IASetIndexBuffer(MeshQuadMin.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
+        v4f UnicolorData[4] = { };
+        GetClearColor(UnicolorData[0]);
+        // Set it to opposite color of clear color for now
+        UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
+        Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
+
+        Context->VSSetConstantBuffers(0, 1, &UnicolorBuffer);
+        Context->PSSetConstantBuffers(0, 1, &UnicolorBuffer);
+        Context->VSSetShader(DrawUnicolor.VertexShader, nullptr, 0);
+        Context->PSSetShader(DrawUnicolor.PixelShader, nullptr, 0);
+
+        UINT StartIdx = 0;
+        UINT StartVx = 0;
+        Context->DrawIndexed(MeshQuadMin.NumInds, StartIdx, StartVx);
+
+    }
 }
 
 bool GfxPrivData::Init(ID3D11Device* Device)
@@ -237,11 +291,53 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         DrawColor = CreateDrawState
         (
             Device,
-            L"src/hlsl/BaseShader.hlsl",
+            L"src/hlsl/BaseShaderColor.hlsl",
             nullptr,
             InputElements,
             ARRAY_SIZE(InputElements)
         );
+    }
+
+    // Shader texture:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawTexture = CreateDrawState
+        (
+            Device,
+            L"src/hlsl/BaseShaderTexture.hlsl",
+            nullptr,
+            InputElements,
+            ARRAY_SIZE(InputElements)
+        );
+    }
+
+    // Shader unicolor:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawUnicolor = CreateDrawState
+        (
+            Device,
+            L"src/hlsl/BaseShaderUnicolor.hlsl",
+            nullptr,
+            InputElements,
+            ARRAY_SIZE(InputElements)
+        );
+
+        D3D11_BUFFER_DESC UnicolorBufferDesc = {};
+        UnicolorBufferDesc.ByteWidth = sizeof(v4f);
+        UnicolorBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        UnicolorBufferDesc.CPUAccessFlags = 0;
+        Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
     }
 
     // Mesh triangle:
@@ -265,11 +361,53 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         );
     }
 
+    // Mesh(es) quad
+    {
+        VxTex QuadVerts[] = {
+            { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
+            { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
+            { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
+            { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
+        };
+
+        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+
+        MeshQuad = CreateMeshState
+        (
+            Device,
+            sizeof(VxTex),
+            ARRAY_SIZE(QuadVerts),
+            QuadVerts,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
+
+        VxMin QuadMinVerts[] = {
+            { -0.5f, +0.5f, +0.5f, 1.0f},
+            { +0.5f, +0.5f, +0.5f, 1.0f},
+            { -0.5f, -0.5f, +0.5f, 1.0f},
+            { +0.5f, -0.5f, +0.5f, 1.0f},
+        };
+
+        MeshQuadMin = CreateMeshState
+        (
+            Device,
+            sizeof(VxMin),
+            ARRAY_SIZE(QuadMinVerts),
+            QuadMinVerts,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
+
+    }
+
     return true;
 }
 
 bool GfxPrivData::Term()
 {
+    // TODO: Clean up data
+
     return true;
 }
 
