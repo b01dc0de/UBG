@@ -19,6 +19,57 @@ HWND UBG_Platform_Win32::hWindow = {};
 //LPSTR UBG_Platform_Win32::lpCmdLine = {};
 //int UBG_Platform_Win32::nShowCmd = {};
 
+void HandleKeyboardInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_KEYDOWN: { KeyboardState::SetKeyDown(wParam); } break;
+        case WM_KEYUP: { KeyboardState::SetKeyUp(wParam); } break;
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
+}
+
+void HandleMouseInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        case WM_MOUSEMOVE:
+        {
+            // NOTE: This code is taken from Windowsx.h GET_X/Y_LPARAM(...)
+            int X = ((int)(short)LOWORD(lParam));
+            int Y = ((int)(short)HIWORD(lParam));
+            MouseState::SetMousePos(X, Y, false);
+        } break;
+        case WM_MOUSELEAVE:
+        {
+            MouseState::SetMousePos(0, 0, true);
+        } break;
+        case WM_LBUTTONDOWN:
+        {
+            MouseState::SetLeftButton(true);
+        } break;
+        case WM_LBUTTONUP:
+        {
+            MouseState::SetLeftButton(false);
+        } break;
+        case WM_RBUTTONDOWN:
+        {
+            MouseState::SetRightButton(true);
+        } break;
+        case WM_RBUTTONUP:
+        {
+            MouseState::SetRightButton(false);
+        } break;
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
+}
+
 LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT lResult = 0;
@@ -32,6 +83,19 @@ LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 GlobalState::bRunning = false;
             }
+            else
+            {
+                HandleKeyboardInput_Win32(uMsg, wParam, lParam);
+            }
+        } break;
+        case WM_MOUSEMOVE:
+        case WM_MOUSELEAVE:
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONUP:
+        {
+            HandleMouseInput_Win32(uMsg, wParam, lParam);
         } break;
         case WM_CLOSE:
         case WM_DESTROY:
