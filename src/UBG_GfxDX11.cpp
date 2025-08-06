@@ -150,18 +150,10 @@ void GetClearColor(v4f& OutClearColor)
 
         case ClearColorMode::CYCLE_RANDOM:
         {
-            static v4f CurrColor = {};
-            static v4f NextColor = {};
+            static v4f CurrColor = GetRandomColorDim();
+            static v4f NextColor = GetRandomColorDim();
             static float LastSwitchTime = 0.0f;
             constexpr float StepDurationSeconds = 2.0f;
-
-            static bool bInit = false;
-            if (!bInit)
-            {
-                CurrColor = GetRandomColorDim();
-                NextColor = GetRandomColorDim();
-                bInit = true;
-            }
 
             float CurrTime = (float)ClockT::CurrTime;
             if (CurrTime - LastSwitchTime > StepDurationSeconds)
