@@ -182,27 +182,25 @@ bool UBG_Platform_Win32::Init()
 
     LPCSTR WindowClassName = "UntitledBulletGame";
     DWORD WindowStyle = WS_OVERLAPPEDWINDOW;
-    DWORD WindowExStyle = 0;
 
     WNDCLASSEXA WindowClass = {};
     WindowClass.cbSize = sizeof(WNDCLASSEXA);
     WindowClass.style = CS_HREDRAW | CS_VREDRAW;
     WindowClass.lpfnWndProc = WndProc_Win32;
-    WindowClass.cbClsExtra = 0;
-    WindowClass.cbWndExtra = 0;
     WindowClass.hInstance = hInstance;
+    WindowClass.hCursor = LoadCursor(0, IDC_ARROW);
     WindowClass.lpszClassName = WindowClassName;
     (void)RegisterClassExA(&WindowClass);
 
     hWindow = CreateWindowExA(
-        WindowExStyle,
+        0, // WindowExStyle
         WindowClassName,
         WindowClassName,
         WindowStyle,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         GlobalState::Width, GlobalState::Height,
-        nullptr, nullptr, nullptr, nullptr
+        nullptr, nullptr, hInstance, nullptr
     );
 
     ToggleFullscreen(hWindow);
