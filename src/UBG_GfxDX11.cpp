@@ -104,29 +104,80 @@ MeshStateT GfxPrivData::MeshQuadMin = {};
 
 Camera GfxPrivData::CameraO = {};
 
+v4f GetRandomColorDim()
+{
+    v4f Result = {};
+    Result.X = GetRandomInt(0, 100) / 255.0f;
+    Result.Y = GetRandomInt(0, 100) / 255.0f;
+    Result.Z = GetRandomInt(0, 100) / 255.0f;
+    Result.W = 1.0f;
+    return Result;
+}
+
 void GetClearColor(v4f& OutClearColor)
 {
-    constexpr bool bCycleColorsBG = true;
-    if (bCycleColorsBG)
+    enum struct ClearColorMode
     {
-        constexpr v4f Colors[] = {
-            { 1.0f, 0.0f, 0.0f, 1.0f },
-            { 0.0f, 1.0f, 0.0f, 1.0f },
-            { 0.0f, 0.0f, 0.1f, 1.0f },
-            { 1.0f, 1.0f, 1.0f, 1.0f },
-            { 0.0f, 0.0f, 0.0f, 1.0f }
-        };
-        constexpr float StepDurationSeconds = 2.0f;
-        constexpr size_t NumColors = ARRAY_SIZE(Colors);
+        SOLID,
+        CYCLE_COLORS,
+        CYCLE_RANDOM,
+    };
+    constexpr ClearColorMode Mode = ClearColorMode::CYCLE_RANDOM;
+    switch (Mode)
+    {
+        case ClearColorMode::SOLID:
+        {
+            OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
+        } break;
 
-        float CurrTime = (float)ClockT::CurrTime;
-        float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
-        int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
-        lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor, OutClearColor);
-    }
-    else
-    {
-        OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
+        case ClearColorMode::CYCLE_COLORS:
+        {
+            constexpr v4f Colors[] = {
+                { 1.0f, 0.0f, 0.0f, 1.0f },
+                { 0.0f, 1.0f, 0.0f, 1.0f },
+                { 0.0f, 0.0f, 0.1f, 1.0f },
+                { 1.0f, 1.0f, 1.0f, 1.0f },
+                { 0.0f, 0.0f, 0.0f, 1.0f }
+            };
+            constexpr float StepDurationSeconds = 2.0f;
+            constexpr size_t NumColors = ARRAY_SIZE(Colors);
+
+            float CurrTime = (float)ClockT::CurrTime;
+            float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
+            int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
+            OutClearColor = lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
+        } break;
+
+        case ClearColorMode::CYCLE_RANDOM:
+        {
+            static v4f CurrColor = {};
+            static v4f NextColor = {};
+            static float LastSwitchTime = 0.0f;
+            constexpr float StepDurationSeconds = 2.0f;
+
+            static bool bInit = false;
+            if (!bInit)
+            {
+                CurrColor = GetRandomColorDim();
+                NextColor = GetRandomColorDim();
+                bInit = true;
+            }
+
+            float CurrTime = (float)ClockT::CurrTime;
+            if (CurrTime - LastSwitchTime > StepDurationSeconds)
+            {
+                LastSwitchTime = CurrTime;
+                CurrColor = NextColor;
+                NextColor = GetRandomColorDim();
+            }
+            float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
+            OutClearColor = lerp(CurrColor, NextColor, Factor);
+        } break;
+
+        default:
+        {
+            OutClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        } break;
     }
 }
 

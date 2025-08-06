@@ -84,6 +84,7 @@
     <ClCompile Include="src\UBG.cpp" />
     <ClCompile Include="src\UBG_GfxDX11.cpp" />
     <ClCompile Include="src\UBG_PlatformWin32.cpp" />
+    <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Clock.h" />
@@ -94,6 +95,7 @@
     <ClInclude Include="src\UBG_GfxDX11.h" />
     <ClInclude Include="src\UBG_Platform.h" />
     <ClInclude Include="src\UBG_PlatformWin32.h" />
+    <ClInclude Include="src\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="src\hlsl\BaseShaderColor.hlsl">

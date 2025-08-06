@@ -5,12 +5,14 @@ float lerp(float A, float B, float t)
     return A + t * (B - A);
 }
 
-void lerp(const v4f& A, const v4f& B, float t, v4f& C)
+v4f lerp(const v4f& A, const v4f& B, float t)
 {
-    C.X = lerp(A.X, B.X, t);
-    C.Y = lerp(A.Y, B.Y, t);
-    C.Z = lerp(A.Z, B.Z, t);
-    C.W = lerp(A.W, B.W, t);
+    v4f Result = { };
+    Result.X = lerp(A.X, B.X, t);
+    Result.Y = lerp(A.Y, B.Y, t);
+    Result.Z = lerp(A.Z, B.Z, t);
+    Result.W = lerp(A.W, B.W, t);
+    return Result;
 }
 
 m2f Mult(const m2f& A, const m2f& B)

@@ -39,6 +39,7 @@ extern void Outf(const char* Fmt, ...);
 #include "Clock.h"
 #include "Input.h"
 #include "Math.h"
+#include "Utils.h"
 
 #endif // UBG_H
 

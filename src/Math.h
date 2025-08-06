@@ -101,7 +101,7 @@ struct m4f
 };
 
 float lerp(float A, float B, float t);
-void lerp(const v4f& A, const v4f& B, float t, v4f& C);
+v4f lerp(const v4f& A, const v4f& B, float t);
 
 m2f Mult(const m2f& A, const m2f& B);
 m3f Mult(const m3f& A, const m3f& B);
