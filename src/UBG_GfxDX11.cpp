@@ -48,6 +48,22 @@ struct MeshStateT
     ID3D11Buffer* IxBuffer;
 };
 
+struct Camera
+{
+    m4f View;
+    m4f Proj;
+
+    void Ortho(float ResX, float ResY, float fDepth)
+    {
+        View = m4f::Identity();
+        Proj = m4f::Identity();
+
+        Proj.V0.X = +2.0f / ResX;
+        Proj.V1.Y = +2.0f / ResY;
+        View.V2.Z = -2.0f / fDepth;
+    }
+};
+
 struct GfxPrivData
 {
     static ID3D11Texture2D* DefaultTexture;
@@ -64,6 +80,8 @@ struct GfxPrivData
     static MeshStateT MeshTriangle;
     static MeshStateT MeshQuad;
     static MeshStateT MeshQuadMin;
+
+    static Camera CameraO;
 
     static void Draw(ID3D11DeviceContext* Context);
     static bool Init(ID3D11Device* Device);
@@ -83,6 +101,8 @@ ID3D11Buffer* GfxPrivData::UnicolorBuffer = {};
 MeshStateT GfxPrivData::MeshTriangle = {};
 MeshStateT GfxPrivData::MeshQuad = {};
 MeshStateT GfxPrivData::MeshQuadMin = {};
+
+Camera GfxPrivData::CameraO = {};
 
 void GetClearColor(v4f& OutClearColor)
 {
@@ -239,10 +259,12 @@ MeshStateT CreateMeshState
 void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 {
     ID3D11Buffer* WVPBuffers[] = {WorldBuffer, ViewProjBuffer};
-    m4f IdentityWorld = m4f::Identity();
-    m4f IdentityViewProj[] = { m4f::Identity(), m4f::Identity() };
-    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &IdentityWorld, (UINT)sizeof(m4f), 0);
-    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, IdentityViewProj, (UINT)sizeof(IdentityViewProj), 0);
+    float HalfWidth = GlobalState::Width * 0.5f;
+    float HalfHeight = GlobalState::Height * 0.5f;
+    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (UINT)sizeof(m4f), 0);
+    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (UINT)sizeof(CameraO), 0);
+    
 
     // Draw MeshTriangle using DrawColor:
     {
@@ -517,6 +539,8 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         );
 
     }
+
+    CameraO.Ortho(GlobalState::Width, GlobalState::Height, -2.0f);
 
     return true;
 }

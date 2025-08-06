@@ -74,10 +74,41 @@ struct m4f
         };
         return Result;
     }
+
+    static m4f Scale(float X, float Y, float Z)
+    {
+        m4f Result = 
+        {
+            { X, 0.0f, 0.0f, 0.0f },
+            { 0.0f, Y, 0.0f, 0.0f },
+            { 0.0f, 0.0f, Z, 0.0f },
+            { 0.0f, 0.0f, 0.0f, 1.0f }
+        };
+        return Result;
+    }
+
+    static m4f Trans(float X, float Y, float Z)
+    {
+        m4f Result = 
+        {
+            { 1.0f, 0.0f, 0.0f, 0.0f },
+            { 0.0f, 1.0f, 0.0f, 0.0f },
+            { 0.0f, 0.0f, 1.0f, 0.0f },
+            { X, Y, Z, 1.0f }
+        };
+        return Result;
+    }
 };
 
 float lerp(float A, float B, float t);
 void lerp(const v4f& A, const v4f& B, float t, v4f& C);
+
+m2f Mult(const m2f& A, const m2f& B);
+m3f Mult(const m3f& A, const m3f& B);
+m4f Mult(const m4f& A, const m4f& B);
+m2f operator*(const m2f& A, const m2f& B);
+m3f operator*(const m3f& A, const m3f& B);
+m4f operator*(const m4f& A, const m4f& B);
 
 #endif // MATH_H
 

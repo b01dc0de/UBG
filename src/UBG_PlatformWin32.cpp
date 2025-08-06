@@ -131,11 +131,15 @@ bool UBG_Platform_Win32::Init()
 
     //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
-    RECT WorkArea = {};
-    if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
+    constexpr bool bSetRes = false;
+    if (bSetRes)
     {
-        GlobalState::Width = WorkArea.right - WorkArea.left;
-        GlobalState::Height = WorkArea.bottom - WorkArea.top;
+        RECT WorkArea = {};
+        if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
+        {
+            GlobalState::Width = WorkArea.right - WorkArea.left;
+            GlobalState::Height = WorkArea.bottom - WorkArea.top;
+        }
     }
 
     LPCSTR WindowClassName = "UntitledBulletGame";
