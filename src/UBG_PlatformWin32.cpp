@@ -70,18 +70,58 @@ void HandleMouseInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
+
+// TODO: Move this static var
+static WINDOWPLACEMENT WindowPlacement = { sizeof(WindowPlacement) };
+void ToggleFullscreen(HWND Window)
+{
+    // NOTE: From Raymond Chen on MSDN
+    // https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
+
+    DWORD Style = GetWindowLong(Window, GWL_STYLE);
+
+    if (Style & WS_OVERLAPPEDWINDOW)
+    {
+        MONITORINFO MonitorInfo = { sizeof(MonitorInfo) };
+        if (GetWindowPlacement(Window, &WindowPlacement) &&
+            GetMonitorInfoA(MonitorFromWindow(Window, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo))
+        {
+            SetWindowLongA(Window, GWL_STYLE, Style & ~WS_OVERLAPPEDWINDOW);
+            SetWindowPos(Window, HWND_TOP,
+                MonitorInfo.rcMonitor.left, MonitorInfo.rcMonitor.top,
+                MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left,
+                MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top,
+                SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        }
+    }
+    else
+    {
+        SetWindowLongA(Window, GWL_STYLE, Style | WS_OVERLAPPEDWINDOW);
+        SetWindowPlacement(Window, &WindowPlacement);
+        SetWindowPos(Window, nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+            SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+}
+
 LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT lResult = 0;
 
     switch (uMsg)
     {
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
         case WM_KEYDOWN:
         case WM_KEYUP:
         {
-            if (wParam == VK_ESCAPE)
+            if (uMsg == WM_KEYUP && wParam == VK_ESCAPE)
             {
                 GlobalState::bRunning = false;
+            }
+            else if (uMsg == WM_KEYUP && wParam == VK_F11)
+            {
+                ToggleFullscreen(hWnd);
             }
             else
             {
@@ -131,16 +171,14 @@ bool UBG_Platform_Win32::Init()
 
     //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
-    constexpr bool bSetRes = false;
-    if (bSetRes)
+    /*
+    RECT WorkArea = {};
+    if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
     {
-        RECT WorkArea = {};
-        if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
-        {
-            GlobalState::Width = WorkArea.right - WorkArea.left;
-            GlobalState::Height = WorkArea.bottom - WorkArea.top;
-        }
+        GlobalState::Width = WorkArea.right - WorkArea.left;
+        GlobalState::Height = WorkArea.bottom - WorkArea.top;
     }
+    */
 
     LPCSTR WindowClassName = "UntitledBulletGame";
     DWORD WindowStyle = WS_OVERLAPPEDWINDOW;
@@ -167,7 +205,9 @@ bool UBG_Platform_Win32::Init()
         nullptr, nullptr, nullptr, nullptr
     );
 
-    ShowWindow(hWindow, SW_SHOWNORMAL);
+    ToggleFullscreen(hWindow);
+
+    ShowWindow(hWindow, SW_SHOW);
 
     return bResult;
 }

@@ -610,7 +610,8 @@ bool UBG_Gfx_DX11::Init()
     SwapChainDesc1.SampleDesc = { 1, 0 };
     SwapChainDesc1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     SwapChainDesc1.BufferCount = 2;
-    SwapChainDesc1.Scaling = DXGI_SCALING_NONE;
+    //SwapChainDesc1.Scaling = DXGI_SCALING_NONE;
+    SwapChainDesc1.Scaling = DXGI_SCALING_STRETCH;
     SwapChainDesc1.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     SwapChainDesc1.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
     SwapChainDesc1.Flags = 0; // DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
