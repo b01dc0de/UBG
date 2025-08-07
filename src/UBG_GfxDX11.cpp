@@ -386,36 +386,16 @@ bool GfxPrivData::Init(ID3D11Device* Device)
 {
     // Default texture / sampler:
     {
-        struct RGBA { u8 R; u8 G; u8 B; u8 A; };
-
-        constexpr int DefaultImageSize = 16;
-        RGBA DefaultImage[DefaultImageSize * DefaultImageSize];
-        for (int RowIdx = 0; RowIdx < DefaultImageSize; RowIdx++)
-        {
-            for (int ColIdx = 0; ColIdx < DefaultImageSize; ColIdx++)
-            {
-                if ((RowIdx + ColIdx) % 2 == 0)
-                {
-                    DefaultImage[RowIdx * DefaultImageSize + ColIdx] = { 255, 73, 173, 255 };
-                }
-                else
-                {
-                    DefaultImage[RowIdx * DefaultImageSize + ColIdx] = { 0, 0, 0, 255 };
-                }
-            }
-        }
-        DefaultImage[0] = { 255, 0, 0, 255 };
-        DefaultImage[DefaultImageSize - 1] = { 0, 255, 0, 255 };
-        DefaultImage[(DefaultImageSize - 1) * DefaultImageSize] = { 0, 0, 255, 255 };
-        DefaultImage[(DefaultImageSize - 1) * DefaultImageSize + (DefaultImageSize - 1)] = { 255, 255, 255, 255 };
+        ImageT DefaultImage = {};
+        GetDebugImage(DefaultImage);
 
         D3D11_SUBRESOURCE_DATA TextureResDataDesc[] = { {} };
-        TextureResDataDesc[0].pSysMem = DefaultImage;
-        TextureResDataDesc[0].SysMemPitch = sizeof(RGBA) * DefaultImageSize;
-        TextureResDataDesc[0].SysMemSlicePitch = sizeof(DefaultImage);
+        TextureResDataDesc[0].pSysMem = DefaultImage.PxBuffer;
+        TextureResDataDesc[0].SysMemPitch = sizeof(RGBA32) * DefaultImage.Width;
+        TextureResDataDesc[0].SysMemSlicePitch = TextureResDataDesc[0].SysMemPitch * DefaultImage.Height;
         D3D11_TEXTURE2D_DESC DefaultTextureDesc = {};
-        DefaultTextureDesc.Width = DefaultImageSize;
-        DefaultTextureDesc.Height = DefaultImageSize;
+        DefaultTextureDesc.Width = DefaultImage.Width;
+        DefaultTextureDesc.Height = DefaultImage.Height;
         DefaultTextureDesc.MipLevels = 1;
         DefaultTextureDesc.ArraySize = 1;
         DefaultTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -431,6 +411,8 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         DefaultSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
         DefaultSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
         Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
+
+        delete[] DefaultImage.PxBuffer;
     }
 
     D3D_SHADER_MACRO DefaultDefines[] =

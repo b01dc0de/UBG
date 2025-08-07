@@ -57,7 +57,7 @@ void GetDebugImage(ImageT& OutImage)
         bool bEvenCell = (PxRow + PxCol) % 2 == 0;
         OutImage.PxBuffer[PxIdx] = bEvenCell ? Black : Pink;
     }
-    int LastRowOffset = OutImage.Height - 1 * OutImage.Width;
+    int LastRowOffset = (OutImage.Height - 1) * OutImage.Width;
     int LastColOffset = OutImage.Width - 1;
     OutImage.PxBuffer[0] = { 255u, 0u, 0u, 255u }; // Red
     OutImage.PxBuffer[LastColOffset] = { 0u, 255u, 0u, 255u }; // Green
