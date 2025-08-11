@@ -20,17 +20,19 @@ extern void Outf(const char* Fmt, ...);
 
 // Common types:
 #include "UBG_Types.h"
-// UBG Platform impl
+// UBG Platform impl:
 #include "UBG_Platform.h"
-// UBG Graphics backend impl
+// UBG Graphics backend impl:
 #include "UBG_Gfx.h"
-// Common project headers
+// Common project headers:
 #include "Array.h"
 #include "Clock.h"
 #include "Input.h"
 #include "Math.h"
 #include "Memory.h"
 #include "Utils.h"
+// The Game:
+#include "UBGame.h"
 
 #endif // UBG_H
 

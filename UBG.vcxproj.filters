@@ -36,6 +36,9 @@
     <ClCompile Include="src\UBG_GfxCommon.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\UBGame.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\UBG_PlatformWin32.h">
@@ -75,6 +78,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\UBG_Types.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UBGame.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

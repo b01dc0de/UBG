@@ -83,6 +83,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Clock.cpp" />
+    <ClCompile Include="src\UBGame.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Math.cpp" />
     <ClCompile Include="src\Memory.cpp" />
@@ -95,6 +96,7 @@
   <ItemGroup>
     <ClInclude Include="src\Array.h" />
     <ClInclude Include="src\Clock.h" />
+    <ClInclude Include="src\UBGame.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Math.h" />
     <ClInclude Include="src\Memory.h" />
