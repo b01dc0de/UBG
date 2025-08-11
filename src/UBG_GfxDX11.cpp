@@ -44,6 +44,38 @@ struct DrawStateT
     }
 };
 
+struct ShaderStateT
+{
+    static constexpr u32 MaxConstantBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+    static constexpr u32 MaxShaderRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+    static constexpr u32 MaxSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
+    u32 NumConstantBuffers;
+    u32 NumShaderRVs;
+    u32 NumSamplers;
+    ID3D11Buffer* ConstantBuffers[MaxConstantBuffers];
+    ID3D11ShaderResourceView* ShaderRVs[MaxShaderRVs];
+    ID3D11SamplerState* Samplers[MaxSamplers];
+
+    void Bind(ID3D11DeviceContext* Context)
+    {
+        if (NumConstantBuffers)
+        {
+            Context->VSSetConstantBuffers(0, NumConstantBuffers, ConstantBuffers);
+            Context->PSSetConstantBuffers(0, NumConstantBuffers, ConstantBuffers);
+        }
+        if (NumShaderRVs)
+        {
+            Context->VSSetShaderResources(0, NumShaderRVs, ShaderRVs);
+            Context->PSSetShaderResources(0, NumShaderRVs, ShaderRVs);
+        }
+        if (NumSamplers)
+        {
+            Context->VSSetSamplers(0, NumSamplers, Samplers);
+            Context->PSSetSamplers(0, NumSamplers, Samplers);
+        }
+    }
+};
+
 struct MeshStateT
 {
     size_t VertexSize;
@@ -154,20 +186,25 @@ MeshStateT CreateMeshState
 
 void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 {
-    ID3D11Buffer* WVPBuffers[] = {WorldBuffer, ViewProjBuffer};
     float HalfWidth = GlobalState::Width * 0.5f;
     float HalfHeight = GlobalState::Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
     Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (UINT)sizeof(m4f), 0);
     Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (UINT)sizeof(CameraO), 0);
+
+    ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
     
     // Draw MeshTriangle using DrawColor:
     {
+        ShaderStateT DrawColorShaderState = {};
+        DrawColorShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers);
+        DrawColorShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawColorShaderState.ConstantBuffers[1] = WVPBuffers[1];
+
         MeshTriangle.Bind(Context);
 
         DrawColor.Bind(Context);
-        Context->VSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
-        Context->PSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
+        DrawColorShaderState.Bind(Context);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -176,15 +213,18 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     // Draw MeshQuad using DrawTexture:
     {
-        MeshQuad.Bind(Context);
+        ShaderStateT DrawTextureShaderState = {};
+        DrawTextureShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers);
+        DrawTextureShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawTextureShaderState.ConstantBuffers[1] = WVPBuffers[1];
+        DrawTextureShaderState.NumShaderRVs = 1;
+        DrawTextureShaderState.ShaderRVs[0] = DefaultTextureSRV;
+        DrawTextureShaderState.NumSamplers = 1;
+        DrawTextureShaderState.Samplers[0] = DefaultSamplerState;
 
+        MeshQuad.Bind(Context);
         DrawTexture.Bind(Context);
-        Context->VSSetShaderResources(0, 1, &DefaultTextureSRV);
-        Context->PSSetShaderResources(0, 1, &DefaultTextureSRV);
-        Context->VSSetSamplers(0, 1, &DefaultSamplerState);
-        Context->PSSetSamplers(0, 1, &DefaultSamplerState);
-        Context->VSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
-        Context->PSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
+        DrawTextureShaderState.Bind(Context);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
@@ -193,6 +233,12 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     // Draw MeshQuadMin using DrawUnicolor:
     {
+        ShaderStateT DrawUnicolorShaderState = {};
+        DrawUnicolorShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers) + 1;
+        DrawUnicolorShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawUnicolorShaderState.ConstantBuffers[1] = WVPBuffers[1];
+        DrawUnicolorShaderState.ConstantBuffers[2] = UnicolorBuffer;
+
         MeshQuadMin.Bind(Context);
 
         DrawUnicolor.Bind(Context);
@@ -201,9 +247,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
         // Set it to opposite color of clear color for now
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
         Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
-        ID3D11Buffer* UnicolorShaderBuffers[] = { WorldBuffer, ViewProjBuffer, UnicolorBuffer };
-        Context->VSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
-        Context->PSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
+        DrawUnicolorShaderState.Bind(Context);
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
