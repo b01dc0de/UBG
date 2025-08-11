@@ -29,6 +29,13 @@ struct DrawStateT
     ID3D11VertexShader* VertexShader;
     ID3D11PixelShader* PixelShader;
 
+    void Bind(ID3D11DeviceContext* Context)
+    {
+        Context->IASetInputLayout(InputLayout);
+        Context->VSSetShader(VertexShader, nullptr, 0);
+        Context->PSSetShader(PixelShader, nullptr, 0);
+    }
+
     void SafeRelease()
     {
         ::SafeRelease(InputLayout);
@@ -343,10 +350,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
     {
         MeshTriangle.Bind(Context);
 
-        Context->IASetInputLayout(DrawColor.InputLayout);
-
-        Context->VSSetShader(DrawColor.VertexShader, nullptr, 0);
-        Context->PSSetShader(DrawColor.PixelShader, nullptr, 0);
+        DrawColor.Bind(Context);
         Context->VSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
         Context->PSSetConstantBuffers(0, ARRAY_SIZE(WVPBuffers), WVPBuffers);
 
@@ -359,10 +363,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
     {
         MeshQuad.Bind(Context);
 
-        Context->IASetInputLayout(DrawTexture.InputLayout);
-
-        Context->VSSetShader(DrawTexture.VertexShader, nullptr, 0);
-        Context->PSSetShader(DrawTexture.PixelShader, nullptr, 0);
+        DrawTexture.Bind(Context);
         Context->VSSetShaderResources(0, 1, &DefaultTextureSRV);
         Context->PSSetShaderResources(0, 1, &DefaultTextureSRV);
         Context->VSSetSamplers(0, 1, &DefaultSamplerState);
@@ -379,18 +380,13 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
     {
         MeshQuadMin.Bind(Context);
 
-        Context->IASetInputLayout(DrawUnicolor.InputLayout);
-
+        DrawUnicolor.Bind(Context);
         v4f UnicolorData[4] = { };
         GetClearColor(UnicolorData[0]);
         // Set it to opposite color of clear color for now
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
         Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
-
         ID3D11Buffer* UnicolorShaderBuffers[] = { WorldBuffer, ViewProjBuffer, UnicolorBuffer };
-
-        Context->VSSetShader(DrawUnicolor.VertexShader, nullptr, 0);
-        Context->PSSetShader(DrawUnicolor.PixelShader, nullptr, 0);
         Context->VSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
         Context->PSSetConstantBuffers(0, ARRAY_SIZE(UnicolorShaderBuffers), UnicolorShaderBuffers);
 
