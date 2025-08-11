@@ -3,23 +3,23 @@
 
 struct v2f
 {
-    float X;
-    float Y;
+    f32 X;
+    f32 Y;
 };
 
 struct v3f
 {
-    float X;
-    float Y;
-    float Z;
+    f32 X;
+    f32 Y;
+    f32 Z;
 };
 
 struct v4f
 {
-    float X;
-    float Y;
-    float Z;
-    float W;
+    f32 X;
+    f32 Y;
+    f32 Z;
+    f32 W;
 };
 
 struct m2f
@@ -75,7 +75,7 @@ struct m4f
         return Result;
     }
 
-    static m4f Scale(float X, float Y, float Z)
+    static m4f Scale(f32 X, f32 Y, f32 Z)
     {
         m4f Result = 
         {
@@ -87,7 +87,7 @@ struct m4f
         return Result;
     }
 
-    static m4f Trans(float X, float Y, float Z)
+    static m4f Trans(f32 X, f32 Y, f32 Z)
     {
         m4f Result = 
         {
@@ -100,8 +100,10 @@ struct m4f
     }
 };
 
-float lerp(float A, float B, float t);
-v4f lerp(const v4f& A, const v4f& B, float t);
+f32 lerp(f32 A, f32 B, f32 t);
+v2f lerp(const v2f& A, const v2f& B, f32 t);
+v3f lerp(const v3f& A, const v3f& B, f32 t);
+v4f lerp(const v4f& A, const v4f& B, f32 t);
 
 m2f Mult(const m2f& A, const m2f& B);
 m3f Mult(const m3f& A, const m3f& B);

@@ -1,17 +1,37 @@
 #include "UBG.h" // UBG.h includes Math.h
 
-float lerp(float A, float B, float t)
+f32 lerp(f32 A, f32 B, f32 t)
 {
     return A + t * (B - A);
 }
 
-v4f lerp(const v4f& A, const v4f& B, float t)
+v2f lerp(const v2f& A, const v2f& B, f32 t)
 {
-    v4f Result = { };
-    Result.X = lerp(A.X, B.X, t);
-    Result.Y = lerp(A.Y, B.Y, t);
-    Result.Z = lerp(A.Z, B.Z, t);
-    Result.W = lerp(A.W, B.W, t);
+    v2f Result = {
+        lerp(A.X, B.X, t),
+        lerp(A.Y, B.Y, t)
+    };
+    return Result;
+}
+
+v3f lerp(const v3f& A, const v3f& B, f32 t)
+{
+    v3f Result = {
+        lerp(A.X, B.X, t),
+        lerp(A.Y, B.Y, t),
+        lerp(A.Z, B.Z, t)
+    };
+    return Result;
+}
+
+v4f lerp(const v4f& A, const v4f& B, f32 t)
+{
+    v4f Result = {
+        lerp(A.X, B.X, t),
+        lerp(A.Y, B.Y, t),
+        lerp(A.Z, B.Z, t),
+        lerp(A.W, B.W, t)
+    };
     return Result;
 }
 
