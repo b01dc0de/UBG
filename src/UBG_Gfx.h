@@ -3,6 +3,8 @@
 
 #define UBG_GFX_IMPL_DX11() (1)
 
+#include "UBG_GfxCommon.h"
+
 #if UBG_GFX_IMPL_DX11()
     #include "UBG_GfxDX11.h"
 #else // UBG_GFX_IMPL_

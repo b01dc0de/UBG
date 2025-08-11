@@ -68,6 +68,12 @@
     <ClInclude Include="src\Array.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\UBG_GfxCommon.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UBG_Types.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="src\hlsl\BaseShaderColor.hlsl">

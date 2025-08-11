@@ -93,8 +93,10 @@
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Math.h" />
     <ClInclude Include="src\Memory.h" />
+    <ClInclude Include="src\UBG_Types.h" />
     <ClInclude Include="src\UBG.h" />
     <ClInclude Include="src\UBG_Gfx.h" />
+    <ClInclude Include="src\UBG_GfxCommon.h" />
     <ClInclude Include="src\UBG_GfxDX11.h" />
     <ClInclude Include="src\UBG_Platform.h" />
     <ClInclude Include="src\UBG_PlatformWin32.h" />

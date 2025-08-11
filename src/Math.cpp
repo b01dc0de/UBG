@@ -1,5 +1,62 @@
 #include "UBG.h" // UBG.h includes Math.h
 
+m2f m2f::Identity()
+{
+    m2f Result =
+    {
+        { 1.0f, 0.0f },
+        { 0.0f, 1.0f }
+    };
+    return Result;
+}
+
+m3f m3f::Identity()
+{
+    m3f Result =
+    {
+        { 1.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f }
+    };
+    return Result;
+}
+
+m4f m4f::Identity()
+{
+    m4f Result =
+    {
+        { 1.0f, 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f, 1.0f }
+    };
+    return Result;
+}
+
+m4f m4f::Scale(f32 X, f32 Y, f32 Z)
+{
+    m4f Result =
+    {
+        { X, 0.0f, 0.0f, 0.0f },
+        { 0.0f, Y, 0.0f, 0.0f },
+        { 0.0f, 0.0f, Z, 0.0f },
+        { 0.0f, 0.0f, 0.0f, 1.0f }
+    };
+    return Result;
+}
+
+m4f m4f::Trans(f32 X, f32 Y, f32 Z)
+{
+    m4f Result =
+    {
+        { 1.0f, 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f, 0.0f },
+        { X, Y, Z, 1.0f }
+    };
+    return Result;
+}
+
 f32 lerp(f32 A, f32 B, f32 t)
 {
     return A + t * (B - A);

@@ -44,23 +44,6 @@ struct DrawStateT
     }
 };
 
-struct VxColor
-{
-    v4f Pos;
-    v4f Col;
-};
-
-struct VxTex
-{
-    v4f Pos;
-    v2f UV;
-};
-
-struct VxMin
-{
-    v4f Pos;
-};
-
 struct MeshStateT
 {
     size_t VertexSize;
