@@ -9,6 +9,8 @@ int GlobalState::Height = DefaultWindowHeight;
 
 bool UBG_Init()
 {
+    Memory::Init();
+
     bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Init();
     ClockT::Init();
     return bResult;
@@ -24,6 +26,9 @@ void UBG_GameLoop()
 bool UBG_Term()
 {
     bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Term();
+
+    Memory::Term();
+
     return bResult;
 }
 
