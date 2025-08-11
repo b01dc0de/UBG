@@ -15,13 +15,26 @@ ID3D11RasterizerState* UBG_Gfx_DX11::RasterState = {};
 ID3D11Texture2D* UBG_Gfx_DX11::DepthStencil = {};
 ID3D11DepthStencilView* UBG_Gfx_DX11::DepthStencilView = {};
 
-#define SafeRelease(Ptr) if (Ptr) { Ptr->Release(); }
+void SafeRelease(IUnknown* Ptr)
+{
+    if (Ptr)
+    {
+        Ptr->Release();
+    }
+}
 
 struct DrawStateT
 {
     ID3D11InputLayout* InputLayout;
     ID3D11VertexShader* VertexShader;
     ID3D11PixelShader* PixelShader;
+
+    void SafeRelease()
+    {
+        ::SafeRelease(InputLayout);
+        ::SafeRelease(VertexShader);
+        ::SafeRelease(PixelShader);
+    }
 };
 
 struct VxColor
@@ -48,6 +61,12 @@ struct MeshStateT
     size_t NumInds;
     ID3D11Buffer* VxBuffer;
     ID3D11Buffer* IxBuffer;
+
+    void SafeRelease()
+    {
+        ::SafeRelease(VxBuffer);
+        ::SafeRelease(IxBuffer);
+    }
 };
 
 struct Camera
@@ -575,31 +594,20 @@ bool GfxPrivData::Init(ID3D11Device* Device)
 
 bool GfxPrivData::Term()
 {
-    // TODO: Refactor this into each SomeType.SafeRelease()
-
     SafeRelease(DefaultTexture);
     SafeRelease(DefaultTextureSRV);
     SafeRelease(DefaultSamplerState);
     SafeRelease(WorldBuffer);
     SafeRelease(ViewProjBuffer);
 
-    SafeRelease(DrawColor.InputLayout);
-    SafeRelease(DrawColor.VertexShader);
-    SafeRelease(DrawColor.PixelShader);
-    SafeRelease(DrawTexture.InputLayout);
-    SafeRelease(DrawTexture.VertexShader);
-    SafeRelease(DrawTexture.PixelShader);
-    SafeRelease(DrawUnicolor.InputLayout);
-    SafeRelease(DrawUnicolor.VertexShader);
-    SafeRelease(DrawUnicolor.PixelShader);
+    DrawColor.SafeRelease();
+    DrawTexture.SafeRelease();
+    DrawUnicolor.SafeRelease();
     SafeRelease(UnicolorBuffer);
 
-    SafeRelease(MeshTriangle.VxBuffer);
-    SafeRelease(MeshTriangle.IxBuffer);
-    SafeRelease(MeshQuad.VxBuffer);
-    SafeRelease(MeshQuad.IxBuffer);
-    SafeRelease(MeshQuadMin.VxBuffer);
-    SafeRelease(MeshQuadMin.IxBuffer);
+    MeshTriangle.SafeRelease();
+    MeshQuad.SafeRelease();
+    MeshQuadMin.SafeRelease();
 
     return true;
 }
