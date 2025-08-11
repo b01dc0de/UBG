@@ -93,26 +93,22 @@ struct MeshStateT
         Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
+    void Draw(ID3D11DeviceContext* Context)
+    {
+        if (IxBuffer)
+        {
+            Context->DrawIndexed((UINT)NumInds, 0, 0);
+        }
+        else
+        {
+            Context->Draw((UINT)NumVerts, 0);
+        }
+    }
+
     void SafeRelease()
     {
         ::SafeRelease(VxBuffer);
         ::SafeRelease(IxBuffer);
-    }
-};
-
-struct Camera
-{
-    m4f View;
-    m4f Proj;
-
-    void Ortho(float ResX, float ResY, float fDepth)
-    {
-        View = m4f::Identity();
-        Proj = m4f::Identity();
-
-        Proj.V0.X = +2.0f / ResX;
-        Proj.V1.Y = +2.0f / ResY;
-        View.V2.Z = -2.0f / fDepth;
     }
 };
 
@@ -125,9 +121,12 @@ struct GfxPrivData
     static ID3D11Buffer* ViewProjBuffer;
 
     static DrawStateT DrawColor;
+    static ShaderStateT DrawColorShaderState;
     static DrawStateT DrawTexture;
+    static ShaderStateT DrawTextureShaderState;
     static DrawStateT DrawUnicolor;
     static ID3D11Buffer* UnicolorBuffer;
+    static ShaderStateT DrawUnicolorShaderState;
 
     static MeshStateT MeshTriangle;
     static MeshStateT MeshQuad;
@@ -136,6 +135,8 @@ struct GfxPrivData
     static Camera CameraO;
 
     static void Draw(ID3D11DeviceContext* Context);
+    static void DrawDemo(ID3D11DeviceContext* Context);
+    static void DrawGame(ID3D11DeviceContext* Context);
     static bool Init(ID3D11Device* Device);
     static bool Term();
 };
@@ -147,9 +148,12 @@ ID3D11Buffer* GfxPrivData::WorldBuffer = {};
 ID3D11Buffer* GfxPrivData::ViewProjBuffer = {};
 
 DrawStateT GfxPrivData::DrawColor = {};
+ShaderStateT GfxPrivData::DrawColorShaderState = {};
 DrawStateT GfxPrivData::DrawTexture = {};
+ShaderStateT GfxPrivData::DrawTextureShaderState = {};
 DrawStateT GfxPrivData::DrawUnicolor = {};
 ID3D11Buffer* GfxPrivData::UnicolorBuffer = {};
+ShaderStateT GfxPrivData::DrawUnicolorShaderState = {};
 MeshStateT GfxPrivData::MeshTriangle = {};
 MeshStateT GfxPrivData::MeshQuad = {};
 MeshStateT GfxPrivData::MeshQuadMin = {};
@@ -186,6 +190,20 @@ MeshStateT CreateMeshState
 
 void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 {
+    constexpr bool bDrawDemo = true;
+
+    if (bDrawDemo)
+    {
+        DrawDemo(Context);
+    }
+    else
+    {
+        DrawGame(Context);
+    }
+}
+
+void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
+{
     float HalfWidth = GlobalState::Width * 0.5f;
     float HalfHeight = GlobalState::Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
@@ -194,65 +212,43 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
     
-    // Draw MeshTriangle using DrawColor:
+    // MeshTriangle / DrawColor / DrawColorShaderState:
     {
-        ShaderStateT DrawColorShaderState = {};
-        DrawColorShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers);
-        DrawColorShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawColorShaderState.ConstantBuffers[1] = WVPBuffers[1];
-
         MeshTriangle.Bind(Context);
-
         DrawColor.Bind(Context);
         DrawColorShaderState.Bind(Context);
 
-        UINT StartIdx = 0;
-        UINT StartVx = 0;
-        Context->DrawIndexed((UINT)MeshTriangle.NumInds, StartIdx, StartVx);
+        MeshTriangle.Draw(Context);
     }
 
-    // Draw MeshQuad using DrawTexture:
+    // MeshQuad / DrawTexture / DrawTextureShaderState:
     {
-        ShaderStateT DrawTextureShaderState = {};
-        DrawTextureShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers);
-        DrawTextureShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawTextureShaderState.ConstantBuffers[1] = WVPBuffers[1];
-        DrawTextureShaderState.NumShaderRVs = 1;
-        DrawTextureShaderState.ShaderRVs[0] = DefaultTextureSRV;
-        DrawTextureShaderState.NumSamplers = 1;
-        DrawTextureShaderState.Samplers[0] = DefaultSamplerState;
-
         MeshQuad.Bind(Context);
         DrawTexture.Bind(Context);
         DrawTextureShaderState.Bind(Context);
 
-        UINT StartIdx = 0;
-        UINT StartVx = 0;
-        Context->DrawIndexed((UINT)MeshQuad.NumInds, StartIdx, StartVx);
+        MeshQuad.Draw(Context);
     }
 
-    // Draw MeshQuadMin using DrawUnicolor:
+    // MeshQuadMin / DrawUnicolor / DrawUnicolorShaderState:
     {
-        ShaderStateT DrawUnicolorShaderState = {};
-        DrawUnicolorShaderState.NumConstantBuffers = ARRAY_SIZE(WVPBuffers) + 1;
-        DrawUnicolorShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawUnicolorShaderState.ConstantBuffers[1] = WVPBuffers[1];
-        DrawUnicolorShaderState.ConstantBuffers[2] = UnicolorBuffer;
-
-        MeshQuadMin.Bind(Context);
-
-        DrawUnicolor.Bind(Context);
         v4f UnicolorData[4] = { };
         GetClearColor(UnicolorData[0]);
         // Set it to opposite color of clear color for now
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
         Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
+
+        MeshQuadMin.Bind(Context);
+        DrawUnicolor.Bind(Context);
         DrawUnicolorShaderState.Bind(Context);
 
-        UINT StartIdx = 0;
-        UINT StartVx = 0;
-        Context->DrawIndexed((UINT)MeshQuadMin.NumInds, StartIdx, StartVx);
+        MeshQuadMin.Draw(Context);
     }
+}
+
+void GfxPrivData::DrawGame(ID3D11DeviceContext* Context)
+{
+    (void)Context;
 }
 
 bool GfxPrivData::Init(ID3D11Device* Device)
@@ -306,6 +302,8 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
     }
 
+    ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
+
     // Shader color:
     {
         D3D11_INPUT_ELEMENT_DESC InputElements[] =
@@ -322,6 +320,11 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             InputElements,
             ARRAY_SIZE(InputElements)
         );
+
+        DrawColorShaderState = { ARRAY_SIZE(WVPBuffers), 0, 0 };
+        DrawColorShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawColorShaderState.ConstantBuffers[1] = WVPBuffers[1];
+
     }
 
     // Shader texture:
@@ -340,6 +343,12 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             InputElements,
             ARRAY_SIZE(InputElements)
         );
+
+        DrawTextureShaderState = { ARRAY_SIZE(WVPBuffers), 1, 1 };
+        DrawTextureShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawTextureShaderState.ConstantBuffers[1] = WVPBuffers[1];
+        DrawTextureShaderState.ShaderRVs[0] = DefaultTextureSRV;
+        DrawTextureShaderState.Samplers[0] = DefaultSamplerState;
     }
 
     // Shader unicolor:
@@ -364,6 +373,11 @@ bool GfxPrivData::Init(ID3D11Device* Device)
         UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         UnicolorBufferDesc.CPUAccessFlags = 0;
         Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
+
+        DrawUnicolorShaderState = { ARRAY_SIZE(WVPBuffers) + 1 };
+        DrawUnicolorShaderState.ConstantBuffers[0] = WVPBuffers[0];
+        DrawUnicolorShaderState.ConstantBuffers[1] = WVPBuffers[1];
+        DrawUnicolorShaderState.ConstantBuffers[2] = UnicolorBuffer;
     }
 
     // Mesh triangle:

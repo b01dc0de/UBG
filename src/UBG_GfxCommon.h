@@ -18,5 +18,13 @@ struct VxMin
     v4f Pos;
 };
 
+struct Camera
+{
+    m4f View;
+    m4f Proj;
+
+    void Ortho(float ResX, float ResY, float fDepth);
+};
+
 #endif // UBG_GFXCOMMON_H
 
