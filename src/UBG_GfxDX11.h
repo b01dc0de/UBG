@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
+#include <dxgidebug.h>
 #include <d3dcompiler.h>
 
 struct UBG_Gfx_DX11

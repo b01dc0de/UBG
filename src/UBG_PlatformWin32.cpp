@@ -21,10 +21,11 @@ HWND UBG_Platform_Win32::hWindow = {};
 
 void HandleKeyboardInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    UNUSED_VAR(lParam);
     switch (uMsg)
     {
-        case WM_KEYDOWN: { KeyboardState::SetKeyDown(wParam); } break;
-        case WM_KEYUP: { KeyboardState::SetKeyUp(wParam); } break;
+        case WM_KEYDOWN: { KeyboardState::SetKeyDown((int)wParam); } break;
+        case WM_KEYUP: { KeyboardState::SetKeyUp((int)wParam); } break;
         default:
         {
             ASSERT(false);
@@ -34,6 +35,7 @@ void HandleKeyboardInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void HandleMouseInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    UNUSED_VAR(wParam);
     switch (uMsg)
     {
         case WM_MOUSEMOVE:

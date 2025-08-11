@@ -124,75 +124,8 @@ MeshStateT GfxPrivData::MeshQuadMin = {};
 
 Camera GfxPrivData::CameraO = {};
 
-v4f GetRandomColorDim()
-{
-    v4f Result = {};
-    Result.X = GetRandomInt(0, 100) / 255.0f;
-    Result.Y = GetRandomInt(0, 100) / 255.0f;
-    Result.Z = GetRandomInt(0, 100) / 255.0f;
-    Result.W = 1.0f;
-    return Result;
-}
-
-void GetClearColor(v4f& OutClearColor)
-{
-    enum struct ClearColorMode
-    {
-        SOLID,
-        CYCLE_COLORS,
-        CYCLE_RANDOM,
-    };
-    constexpr ClearColorMode Mode = ClearColorMode::CYCLE_RANDOM;
-    switch (Mode)
-    {
-        case ClearColorMode::SOLID:
-        {
-            OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
-        } break;
-
-        case ClearColorMode::CYCLE_COLORS:
-        {
-            constexpr v4f Colors[] = {
-                { 1.0f, 0.0f, 0.0f, 1.0f },
-                { 0.0f, 1.0f, 0.0f, 1.0f },
-                { 0.0f, 0.0f, 0.1f, 1.0f },
-                { 1.0f, 1.0f, 1.0f, 1.0f },
-                { 0.0f, 0.0f, 0.0f, 1.0f }
-            };
-            constexpr float StepDurationSeconds = 2.0f;
-            constexpr size_t NumColors = ARRAY_SIZE(Colors);
-
-            float CurrTime = (float)ClockT::CurrTime;
-            float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
-            int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
-            OutClearColor = lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
-        } break;
-
-        case ClearColorMode::CYCLE_RANDOM:
-        {
-            static v4f CurrColor = GetRandomColorDim();
-            static v4f NextColor = GetRandomColorDim();
-            static float LastSwitchTime = 0.0f;
-            constexpr float StepDurationSeconds = 2.0f;
-
-            float CurrTime = (float)ClockT::CurrTime;
-            if (CurrTime - LastSwitchTime > StepDurationSeconds)
-            {
-                LastSwitchTime = CurrTime;
-                CurrColor = NextColor;
-                NextColor = GetRandomColorDim();
-            }
-            float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
-            OutClearColor = lerp(CurrColor, NextColor, Factor);
-        } break;
-
-        default:
-        {
-            OutClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-        } break;
-    }
-}
-
+v4f GetRandomColorDim();
+void GetClearColor(v4f& OutClearColor);
 int CompileShaderHLSL
 (
     const wchar_t* SourceFileName,
@@ -200,54 +133,7 @@ int CompileShaderHLSL
     LPCSTR ShaderProfile,
     ID3DBlob** OutShaderBlob,
     const D3D_SHADER_MACRO* Defines
-)
-{
-    if (SourceFileName == nullptr || EntryPointFunction == nullptr || ShaderProfile == nullptr || OutShaderBlob == nullptr)
-    {
-        return E_INVALIDARG;
-    }
-
-    HRESULT Result = S_OK;
-
-    UINT ShaderCompileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-#if _DEBUG
-    ShaderCompileFlags |= D3DCOMPILE_DEBUG;
-    ShaderCompileFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif // _DEBUG
-
-    ID3DBlob* ShaderBlob = nullptr;
-    ID3DBlob* ErrorBlob = nullptr;
-
-    // TODO: Switch to using D3DCompile2(...) instead of D3DCompileFromFile
-    Result = D3DCompileFromFile
-    (
-        SourceFileName,
-        Defines,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        EntryPointFunction,
-        ShaderProfile,
-        ShaderCompileFlags,
-        0,
-        &ShaderBlob,
-        &ErrorBlob
-    );
-
-    if (FAILED(Result) && ShaderBlob)
-    {
-        ShaderBlob->Release();
-        ShaderBlob = nullptr;
-    }
-    if (ErrorBlob)
-    {
-        OutputDebugStringA((char*)ErrorBlob->GetBufferPointer());
-        ErrorBlob->Release();
-    }
-
-    *OutShaderBlob = ShaderBlob;
-
-    return Result;
-}
-
+);
 DrawStateT CreateDrawState
 (
     ID3D11Device* Device,
@@ -255,37 +141,7 @@ DrawStateT CreateDrawState
     const D3D_SHADER_MACRO* Defines,
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
     size_t NumInputElements
-)
-{
-    ASSERT(Device);
-    ASSERT(ShaderFileName);
-    ASSERT(InputElements);
-
-    ID3DBlob* VSBlob = nullptr;
-    ID3DBlob* PSBlob = nullptr;
-
-    static const char* VxShaderMain = "VSMain";
-    static const char* VxShaderProfile = "vs_5_0";
-    static const char* PxShaderMain = "PSMain";
-    static const char* PxShaderProfile = "ps_5_0";
-    CompileShaderHLSL(ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
-    CompileShaderHLSL(ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
-
-    DrawStateT Result;
-
-    if (VSBlob && PSBlob)
-    {
-        Device->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr, &Result.VertexShader);
-        Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
-
-        Device->CreateInputLayout(InputElements, (UINT)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
-    }
-    SafeRelease(VSBlob);
-    SafeRelease(PSBlob);
-
-    return Result;
-}
-
+);
 MeshStateT CreateMeshState
 (
     ID3D11Device* InDevice,
@@ -294,31 +150,7 @@ MeshStateT CreateMeshState
     void* VertexData,
     size_t NumIndices,
     unsigned int* IndexData
-)
-{
-    ASSERT(VertexData);
-
-    MeshStateT Result;
-
-    Result.VertexSize = VertexSize;
-    Result.NumVerts = NumVertices;
-    Result.NumInds = NumIndices;
-
-    size_t VxDataSize = VertexSize * NumVertices;
-    D3D11_BUFFER_DESC VertexBufferDesc = { VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
-    D3D11_SUBRESOURCE_DATA VertexBufferInitData = { VertexData, 0, 0 };
-    InDevice->CreateBuffer(&VertexBufferDesc, &VertexBufferInitData, &Result.VxBuffer);
-
-    if (IndexData)
-    {
-        size_t IxDataSize = NumIndices * sizeof(unsigned int);
-        D3D11_BUFFER_DESC IndexBufferDesc = { IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
-        D3D11_SUBRESOURCE_DATA IndexBufferInitData = { IndexData, 0, 0 };
-        InDevice->CreateBuffer(&IndexBufferDesc, &IndexBufferInitData, &Result.IxBuffer);
-    }
-
-    return Result;
-}
+);
 
 void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 {
@@ -339,7 +171,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
-        Context->DrawIndexed(MeshTriangle.NumInds, StartIdx, StartVx);
+        Context->DrawIndexed((UINT)MeshTriangle.NumInds, StartIdx, StartVx);
     }
 
     // Draw MeshQuad using DrawTexture:
@@ -356,7 +188,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
-        Context->DrawIndexed(MeshQuad.NumInds, StartIdx, StartVx);
+        Context->DrawIndexed((UINT)MeshQuad.NumInds, StartIdx, StartVx);
     }
 
     // Draw MeshQuadMin using DrawUnicolor:
@@ -375,7 +207,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
         UINT StartIdx = 0;
         UINT StartVx = 0;
-        Context->DrawIndexed(MeshQuadMin.NumInds, StartIdx, StartVx);
+        Context->DrawIndexed((UINT)MeshQuadMin.NumInds, StartIdx, StartVx);
     }
 }
 
@@ -563,7 +395,7 @@ bool GfxPrivData::Init(ID3D11Device* Device)
     }
 
     // TODO: Why is Depth passed as -2?
-    CameraO.Ortho(GlobalState::Width, GlobalState::Height, -2.0f);
+    CameraO.Ortho((float)GlobalState::Width, (float)GlobalState::Height, -2.0f);
     
     // TODO: Check for correct init'd state here
     return true;
@@ -722,8 +554,6 @@ bool UBG_Gfx_DX11::Init()
     return bResult;
 }
 
-#include <dxgidebug.h>
-
 bool UBG_Gfx_DX11::Term()
 {
     SafeRelease(DepthStencil);
@@ -748,5 +578,201 @@ bool UBG_Gfx_DX11::Term()
     SafeRelease(Device);
 
     return true;
+}
+
+v4f GetRandomColorDim()
+{
+    v4f Result = {};
+    Result.X = GetRandomInt(0, 100) / 255.0f;
+    Result.Y = GetRandomInt(0, 100) / 255.0f;
+    Result.Z = GetRandomInt(0, 100) / 255.0f;
+    Result.W = 1.0f;
+    return Result;
+}
+
+void GetClearColor(v4f& OutClearColor)
+{
+    enum struct ClearColorMode
+    {
+        SOLID,
+        CYCLE_COLORS,
+        CYCLE_RANDOM,
+    };
+    constexpr ClearColorMode Mode = ClearColorMode::CYCLE_RANDOM;
+    switch (Mode)
+    {
+        case ClearColorMode::SOLID:
+        {
+            OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
+        } break;
+
+        case ClearColorMode::CYCLE_COLORS:
+        {
+            constexpr v4f Colors[] = {
+                { 1.0f, 0.0f, 0.0f, 1.0f },
+                { 0.0f, 1.0f, 0.0f, 1.0f },
+                { 0.0f, 0.0f, 0.1f, 1.0f },
+                { 1.0f, 1.0f, 1.0f, 1.0f },
+                { 0.0f, 0.0f, 0.0f, 1.0f }
+            };
+            constexpr float StepDurationSeconds = 2.0f;
+            constexpr size_t NumColors = ARRAY_SIZE(Colors);
+
+            float CurrTime = (float)ClockT::CurrTime;
+            float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
+            int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
+            OutClearColor = lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
+        } break;
+
+        case ClearColorMode::CYCLE_RANDOM:
+        {
+            static v4f CurrColor = GetRandomColorDim();
+            static v4f NextColor = GetRandomColorDim();
+            static float LastSwitchTime = 0.0f;
+            constexpr float StepDurationSeconds = 2.0f;
+
+            float CurrTime = (float)ClockT::CurrTime;
+            if (CurrTime - LastSwitchTime > StepDurationSeconds)
+            {
+                LastSwitchTime = CurrTime;
+                CurrColor = NextColor;
+                NextColor = GetRandomColorDim();
+            }
+            float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
+            OutClearColor = lerp(CurrColor, NextColor, Factor);
+        } break;
+
+        default:
+        {
+            OutClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        } break;
+    }
+}
+
+int CompileShaderHLSL
+(
+    const wchar_t* SourceFileName,
+    LPCSTR EntryPointFunction,
+    LPCSTR ShaderProfile,
+    ID3DBlob** OutShaderBlob,
+    const D3D_SHADER_MACRO* Defines
+)
+{
+    if (SourceFileName == nullptr || EntryPointFunction == nullptr || ShaderProfile == nullptr || OutShaderBlob == nullptr)
+    {
+        return E_INVALIDARG;
+    }
+
+    HRESULT Result = S_OK;
+
+    UINT ShaderCompileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if _DEBUG
+    ShaderCompileFlags |= D3DCOMPILE_DEBUG;
+    ShaderCompileFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif // _DEBUG
+
+    ID3DBlob* ShaderBlob = nullptr;
+    ID3DBlob* ErrorBlob = nullptr;
+
+    // TODO: Switch to using D3DCompile2(...) instead of D3DCompileFromFile
+    Result = D3DCompileFromFile
+    (
+        SourceFileName,
+        Defines,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        EntryPointFunction,
+        ShaderProfile,
+        ShaderCompileFlags,
+        0,
+        &ShaderBlob,
+        &ErrorBlob
+    );
+
+    if (FAILED(Result) && ShaderBlob)
+    {
+        ShaderBlob->Release();
+        ShaderBlob = nullptr;
+    }
+    if (ErrorBlob)
+    {
+        OutputDebugStringA((char*)ErrorBlob->GetBufferPointer());
+        ErrorBlob->Release();
+    }
+
+    *OutShaderBlob = ShaderBlob;
+
+    return Result;
+}
+
+DrawStateT CreateDrawState
+(
+    ID3D11Device* Device,
+    const wchar_t* ShaderFileName,
+    const D3D_SHADER_MACRO* Defines,
+    const D3D11_INPUT_ELEMENT_DESC* InputElements,
+    size_t NumInputElements
+)
+{
+    ASSERT(Device);
+    ASSERT(ShaderFileName);
+    ASSERT(InputElements);
+
+    ID3DBlob* VSBlob = nullptr;
+    ID3DBlob* PSBlob = nullptr;
+
+    static const char* VxShaderMain = "VSMain";
+    static const char* VxShaderProfile = "vs_5_0";
+    static const char* PxShaderMain = "PSMain";
+    static const char* PxShaderProfile = "ps_5_0";
+    CompileShaderHLSL(ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
+    CompileShaderHLSL(ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
+
+    DrawStateT Result;
+
+    if (VSBlob && PSBlob)
+    {
+        Device->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr, &Result.VertexShader);
+        Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
+
+        Device->CreateInputLayout(InputElements, (UINT)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
+    }
+    SafeRelease(VSBlob);
+    SafeRelease(PSBlob);
+
+    return Result;
+}
+
+MeshStateT CreateMeshState
+(
+    ID3D11Device* InDevice,
+    size_t VertexSize,
+    size_t NumVertices,
+    void* VertexData,
+    size_t NumIndices,
+    unsigned int* IndexData
+)
+{
+    ASSERT(VertexData);
+
+    MeshStateT Result;
+
+    Result.VertexSize = VertexSize;
+    Result.NumVerts = NumVertices;
+    Result.NumInds = NumIndices;
+
+    size_t VxDataSize = VertexSize * NumVertices;
+    D3D11_BUFFER_DESC VertexBufferDesc = { (UINT)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
+    D3D11_SUBRESOURCE_DATA VertexBufferInitData = { VertexData, 0, 0 };
+    InDevice->CreateBuffer(&VertexBufferDesc, &VertexBufferInitData, &Result.VxBuffer);
+
+    if (IndexData)
+    {
+        size_t IxDataSize = NumIndices * sizeof(unsigned int);
+        D3D11_BUFFER_DESC IndexBufferDesc = { (UINT)IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
+        D3D11_SUBRESOURCE_DATA IndexBufferInitData = { IndexData, 0, 0 };
+        InDevice->CreateBuffer(&IndexBufferDesc, &IndexBufferInitData, &Result.IxBuffer);
+    }
+
+    return Result;
 }
 

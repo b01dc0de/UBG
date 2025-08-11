@@ -95,7 +95,7 @@ struct MemPool
             // Case 2: NewAlloc comes before the first alloc
             else if (NumAlloc > 0 && NewAlloc.Data < AllocBlocks[0].Data)
             {
-                for (int ShiftUpIdx = NumAlloc; ShiftUpIdx > 0; ShiftUpIdx--)
+                for (int ShiftUpIdx = (int)NumAlloc; ShiftUpIdx > 0; ShiftUpIdx--)
                 {
                     AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
                 }
@@ -122,7 +122,7 @@ struct MemPool
                 ASSERT(NewAllocIdx >= 0);
                 if (NewAllocIdx >= 0)
                 {
-                    for (int ShiftUpIdx = NumAlloc; ShiftUpIdx > NewAllocIdx; ShiftUpIdx--)
+                    for (int ShiftUpIdx = (int)NumAlloc; ShiftUpIdx > NewAllocIdx; ShiftUpIdx--)
                     {
                         AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
                     }
@@ -225,7 +225,7 @@ struct MemPool
 
                 if (bComesFirst)
                 {
-                    for (int ShiftUpIdx = NumFree; ShiftUpIdx > 0; ShiftUpIdx--)
+                    for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > 0; ShiftUpIdx--)
                     {
                         FreeBlocks[ShiftUpIdx] = FreeBlocks[ShiftUpIdx - 1];
                     }
@@ -243,7 +243,7 @@ struct MemPool
             }
             else if (!bCoalesced && NewFreeIdx >= 0)
             {
-                for (int ShiftUpIdx = NumFree; ShiftUpIdx > NewFreeIdx; ShiftUpIdx++)
+                for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > NewFreeIdx; ShiftUpIdx++)
                 {
                     FreeBlocks[ShiftUpIdx] = FreeBlocks[ShiftUpIdx - 1];
                 }
