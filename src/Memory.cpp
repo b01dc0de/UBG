@@ -11,7 +11,6 @@ struct MemBlock
     }
 };
 
-
 struct MemPool
 {
     static constexpr size_t MaxBlocks = 1024;

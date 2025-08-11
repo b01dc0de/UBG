@@ -62,6 +62,15 @@ struct MeshStateT
     ID3D11Buffer* VxBuffer;
     ID3D11Buffer* IxBuffer;
 
+    void Bind(ID3D11DeviceContext* Context)
+    {
+        UINT VxStride = (UINT)VertexSize;
+        UINT VxOffset = 0u;
+        Context->IASetVertexBuffers(0, 1, &VxBuffer, &VxStride, &VxOffset);
+        Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+
     void SafeRelease()
     {
         ::SafeRelease(VxBuffer);
@@ -219,6 +228,7 @@ int CompileShaderHLSL
     ID3DBlob* ShaderBlob = nullptr;
     ID3DBlob* ErrorBlob = nullptr;
 
+    // TODO: Switch to using D3DCompile2(...) instead of D3DCompileFromFile
     Result = D3DCompileFromFile
     (
         SourceFileName,
@@ -329,16 +339,11 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
     Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (UINT)sizeof(m4f), 0);
     Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (UINT)sizeof(CameraO), 0);
     
-
     // Draw MeshTriangle using DrawColor:
     {
-        UINT VxStride = MeshTriangle.VertexSize;
-        UINT VxOffset = 0;
+        MeshTriangle.Bind(Context);
 
         Context->IASetInputLayout(DrawColor.InputLayout);
-        Context->IASetVertexBuffers(0, 1, &MeshTriangle.VxBuffer, &VxStride, &VxOffset);
-        Context->IASetIndexBuffer(MeshTriangle.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         Context->VSSetShader(DrawColor.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawColor.PixelShader, nullptr, 0);
@@ -352,13 +357,9 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     // Draw MeshQuad using DrawTexture:
     {
-        UINT VxStride = MeshQuad.VertexSize;
-        UINT VxOffset = 0;
+        MeshQuad.Bind(Context);
 
         Context->IASetInputLayout(DrawTexture.InputLayout);
-        Context->IASetVertexBuffers(0, 1, &MeshQuad.VxBuffer, &VxStride, &VxOffset);
-        Context->IASetIndexBuffer(MeshQuad.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         Context->VSSetShader(DrawTexture.VertexShader, nullptr, 0);
         Context->PSSetShader(DrawTexture.PixelShader, nullptr, 0);
@@ -376,13 +377,9 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
 
     // Draw MeshQuadMin using DrawUnicolor:
     {
-        UINT VxStride = MeshQuadMin.VertexSize;
-        UINT VxOffset = 0;
+        MeshQuadMin.Bind(Context);
 
         Context->IASetInputLayout(DrawUnicolor.InputLayout);
-        Context->IASetVertexBuffers(0, 1, &MeshQuadMin.VxBuffer, &VxStride, &VxOffset);
-        Context->IASetIndexBuffer(MeshQuadMin.IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         v4f UnicolorData[4] = { };
         GetClearColor(UnicolorData[0]);
@@ -586,6 +583,7 @@ bool GfxPrivData::Init(ID3D11Device* Device)
 
     }
 
+    // TODO: Why is Depth passed as -2?
     CameraO.Ortho(GlobalState::Width, GlobalState::Height, -2.0f);
     
     // TODO: Check for correct init'd state here

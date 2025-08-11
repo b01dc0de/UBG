@@ -11,15 +11,9 @@ struct Array
     static constexpr size_t DefaultInitCapacity = 32;
     static constexpr float DefaultGrowthFactor = 2.0f;
 
-    Array(size_t InitCapacity)
+    Array(size_t InitCapacity = DefaultInitCapacity)
     {
         Capacity = InitCapacity;
-        Num = 0u;
-        Data = new T[Capacity];
-    }
-    Array()
-    {
-        Capacity = DefaultInitCapacity;
         Num = 0u;
         Data = new T[Capacity];
     }
