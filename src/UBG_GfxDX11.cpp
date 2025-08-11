@@ -568,7 +568,8 @@ bool GfxPrivData::Init(ID3D11Device* Device)
     }
 
     CameraO.Ortho(GlobalState::Width, GlobalState::Height, -2.0f);
-
+    
+    // TODO: Check for correct init'd state here
     return true;
 }
 
@@ -723,11 +724,17 @@ bool UBG_Gfx_DX11::Init()
 
     Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
 
-    GfxPrivData::Init(Device);
 
-    // TODO: Actually check if we're initing state correctly (and not failing)
+    bool bResult = Device && Context &&
+        SwapChain && BackBuffer &&
+        RenderTargetView && RasterState &&
+        DepthStencil && DepthStencilView;
 
-    return true;
+    bResult &= GfxPrivData::Init(Device);
+
+    ASSERT(bResult);
+
+    return bResult;
 }
 
 #include <dxgidebug.h>
