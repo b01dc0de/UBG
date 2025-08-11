@@ -1,6 +1,7 @@
 #ifndef UBG_PLATFORMWIN32_H
 #define UBG_PLATFORMWIN32_H
 
+#include <crtdbg.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 

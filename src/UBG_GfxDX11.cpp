@@ -15,6 +15,8 @@ ID3D11RasterizerState* UBG_Gfx_DX11::RasterState = {};
 ID3D11Texture2D* UBG_Gfx_DX11::DepthStencil = {};
 ID3D11DepthStencilView* UBG_Gfx_DX11::DepthStencilView = {};
 
+#define SafeRelease(Ptr) if (Ptr) { Ptr->Release(); }
+
 struct DrawStateT
 {
     ID3D11InputLayout* InputLayout;
@@ -572,7 +574,31 @@ bool GfxPrivData::Init(ID3D11Device* Device)
 
 bool GfxPrivData::Term()
 {
-    // TODO: Clean up data
+    // TODO: Refactor this into each SomeType.SafeRelease()
+
+    SafeRelease(DefaultTexture);
+    SafeRelease(DefaultTextureSRV);
+    SafeRelease(DefaultSamplerState);
+    SafeRelease(WorldBuffer);
+    SafeRelease(ViewProjBuffer);
+
+    SafeRelease(DrawColor.InputLayout);
+    SafeRelease(DrawColor.VertexShader);
+    SafeRelease(DrawColor.PixelShader);
+    SafeRelease(DrawTexture.InputLayout);
+    SafeRelease(DrawTexture.VertexShader);
+    SafeRelease(DrawTexture.PixelShader);
+    SafeRelease(DrawUnicolor.InputLayout);
+    SafeRelease(DrawUnicolor.VertexShader);
+    SafeRelease(DrawUnicolor.PixelShader);
+    SafeRelease(UnicolorBuffer);
+
+    SafeRelease(MeshTriangle.VxBuffer);
+    SafeRelease(MeshTriangle.IxBuffer);
+    SafeRelease(MeshQuad.VxBuffer);
+    SafeRelease(MeshQuad.IxBuffer);
+    SafeRelease(MeshQuadMin.VxBuffer);
+    SafeRelease(MeshQuadMin.IxBuffer);
 
     return true;
 }
@@ -704,8 +730,31 @@ bool UBG_Gfx_DX11::Init()
     return true;
 }
 
+#include <dxgidebug.h>
+
 bool UBG_Gfx_DX11::Term()
 {
+    SafeRelease(DepthStencil);
+    SafeRelease(DepthStencilView);
+
+    SafeRelease(RenderTargetView);
+    SafeRelease(RasterState);
+
+    SafeRelease(SwapChain);
+    SafeRelease(BackBuffer);
+
+    SafeRelease(Context);
+#if _DEBUG
+    if (Device)
+    {
+        ID3D11Debug* DxDebug = nullptr;
+        Device->QueryInterface(__uuidof(ID3D11Debug), (void**)&DxDebug);
+        if (DxDebug) { DxDebug->ReportLiveDeviceObjects(D3D11_RLDO_IGNORE_INTERNAL); }
+        SafeRelease(DxDebug);
+    }
+#endif // _DEBUG
+    SafeRelease(Device);
+
     return true;
 }
 

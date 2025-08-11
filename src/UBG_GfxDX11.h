@@ -27,7 +27,5 @@ struct UBG_Gfx_DX11
 
 using UBG_GfxT = UBG_Gfx_DX11;
 
-#define SafeRelease(Ptr) if (Ptr) { Ptr->Release(); }
-
 #endif // UBG_GFXDX11_H
 
