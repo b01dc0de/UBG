@@ -36,9 +36,11 @@ extern void Outf(const char* Fmt, ...);
 // UBG Graphics backend impl
 #include "UBG_Gfx.h"
 // Common project headers
+#include "Array.h"
 #include "Clock.h"
 #include "Input.h"
 #include "Math.h"
+#include "Memory.h"
 #include "Utils.h"
 
 #endif // UBG_H

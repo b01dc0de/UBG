@@ -111,7 +111,6 @@ void LoadBMPFile(const char* Filename, ImageT& OutImage)
 
         if (BmpHdr.InfoHeader.BitsPerPixel == 32)
         {
-            RGBA32* PxReadPtr = (RGBA32*)FileReadPtr;
             size_t BitmapFileSize = BmpHdr.FileHeader.SizeInBytes;
             size_t RemainingFileSize = BitmapFileSize - sizeof(BMPHeader);
 

@@ -30,6 +30,9 @@
     <ClCompile Include="src\Utils.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Memory.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\UBG_PlatformWin32.h">
@@ -57,6 +60,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\Utils.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Memory.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Array.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

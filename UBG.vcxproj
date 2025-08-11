@@ -81,15 +81,18 @@
     <ClCompile Include="src\Clock.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Math.cpp" />
+    <ClCompile Include="src\Memory.cpp" />
     <ClCompile Include="src\UBG.cpp" />
     <ClCompile Include="src\UBG_GfxDX11.cpp" />
     <ClCompile Include="src\UBG_PlatformWin32.cpp" />
     <ClCompile Include="src\Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Array.h" />
     <ClInclude Include="src\Clock.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Math.h" />
+    <ClInclude Include="src\Memory.h" />
     <ClInclude Include="src\UBG.h" />
     <ClInclude Include="src\UBG_Gfx.h" />
     <ClInclude Include="src\UBG_GfxDX11.h" />
