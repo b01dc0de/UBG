@@ -19,7 +19,7 @@ HWND UBG_Platform_Win32::hWindow = {};
 //LPSTR UBG_Platform_Win32::lpCmdLine = {};
 //int UBG_Platform_Win32::nShowCmd = {};
 
-void HandleKeyboardInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
+void HandleKeyboardInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
 {
     UNUSED_VAR(lParam);
     switch (uMsg)
@@ -33,7 +33,7 @@ void HandleKeyboardInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-void HandleMouseInput_Win32(UINT uMsg, WPARAM wParam, LPARAM lParam)
+void HandleMouseInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
 {
     UNUSED_VAR(wParam);
     switch (uMsg)
@@ -106,7 +106,7 @@ void ToggleFullscreen(HWND Window)
     }
 }
 
-LRESULT WndProc_Win32(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT WndProc_Win32(HWND hWnd, u32 uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT lResult = 0;
 

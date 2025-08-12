@@ -80,8 +80,8 @@ struct MeshStateT
 
     void Bind(ID3D11DeviceContext* Context)
     {
-        UINT VxStride = (UINT)VertexSize;
-        UINT VxOffset = 0u;
+        u32 VxStride = (u32)VertexSize;
+        u32 VxOffset = 0u;
         Context->IASetVertexBuffers(0, 1, &VxBuffer, &VxStride, &VxOffset);
         Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
         Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -91,11 +91,11 @@ struct MeshStateT
     {
         if (IxBuffer)
         {
-            Context->DrawIndexed((UINT)NumInds, 0, 0);
+            Context->DrawIndexed((u32)NumInds, 0, 0);
         }
         else
         {
-            Context->Draw((UINT)NumVerts, 0);
+            Context->Draw((u32)NumVerts, 0);
         }
     }
 
@@ -201,8 +201,8 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
     float HalfWidth = GlobalState::Width * 0.5f;
     float HalfHeight = GlobalState::Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
-    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (UINT)sizeof(m4f), 0);
-    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (UINT)sizeof(CameraO), 0);
+    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (u32)sizeof(m4f), 0);
+    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (u32)sizeof(CameraO), 0);
 
     ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
     
@@ -226,7 +226,7 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
         GetClearColor(UnicolorData[0]);
         // Set it to opposite color of clear color for now
         UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
-        Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (UINT)sizeof(UnicolorData), 0);
+        Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (u32)sizeof(UnicolorData), 0);
 
         MeshQuadMin.Bind(Context);
         DrawUnicolor.Bind(Context);
@@ -474,8 +474,8 @@ void UBG_Gfx_DX11::DrawBegin()
 
 void UBG_Gfx_DX11::DrawEnd()
 {
-    UINT SyncInterval = 0;
-    UINT PresentFlags = 0;
+    u32 SyncInterval = 0;
+    u32 PresentFlags = 0;
     DXGI_PRESENT_PARAMETERS PresentParams = {};
     SwapChain->Present1(SyncInterval, PresentFlags, &PresentParams);
 }
@@ -489,7 +489,7 @@ void UBG_Gfx_DX11::Draw()
 
 bool UBG_Gfx_DX11::Init()
 {
-    UINT CreateDeviceFlags = 0;
+    u32 CreateDeviceFlags = 0;
 #if _DEBUG
     CreateDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif // _DEBUG
@@ -706,7 +706,7 @@ int CompileShaderHLSL
 
     HRESULT Result = S_OK;
 
-    UINT ShaderCompileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+    u32 ShaderCompileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if _DEBUG
     ShaderCompileFlags |= D3DCOMPILE_DEBUG;
     ShaderCompileFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -781,7 +781,7 @@ DrawStateT CreateDrawState
         Device->CreateVertexShader(VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), nullptr, &Result.VertexShader);
         Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
 
-        Device->CreateInputLayout(InputElements, (UINT)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
+        Device->CreateInputLayout(InputElements, (u32)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
 
 
     }
@@ -838,14 +838,14 @@ MeshStateT CreateMeshState
     Result.NumInds = NumIndices;
 
     size_t VxDataSize = VertexSize * NumVertices;
-    D3D11_BUFFER_DESC VertexBufferDesc = { (UINT)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
+    D3D11_BUFFER_DESC VertexBufferDesc = { (u32)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
     D3D11_SUBRESOURCE_DATA VertexBufferInitData = { VertexData, 0, 0 };
     InDevice->CreateBuffer(&VertexBufferDesc, &VertexBufferInitData, &Result.VxBuffer);
 
     if (IndexData)
     {
         size_t IxDataSize = NumIndices * sizeof(unsigned int);
-        D3D11_BUFFER_DESC IndexBufferDesc = { (UINT)IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
+        D3D11_BUFFER_DESC IndexBufferDesc = { (u32)IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
         D3D11_SUBRESOURCE_DATA IndexBufferInitData = { IndexData, 0, 0 };
         InDevice->CreateBuffer(&IndexBufferDesc, &IndexBufferInitData, &Result.IxBuffer);
     }
