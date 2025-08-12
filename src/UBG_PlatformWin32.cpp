@@ -175,16 +175,8 @@ bool UBG_Platform_Win32::Init()
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif // _DEBUG
 
+    // TODO: Do we care about this?
     //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
-
-    /*
-    RECT WorkArea = {};
-    if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &WorkArea, 0))
-    {
-        GlobalState::Width = WorkArea.right - WorkArea.left;
-        GlobalState::Height = WorkArea.bottom - WorkArea.top;
-    }
-    */
 
     LPCSTR WindowClassName = "UntitledBulletGame";
     DWORD WindowStyle = WS_OVERLAPPEDWINDOW;
@@ -205,9 +197,15 @@ bool UBG_Platform_Win32::Init()
         WindowStyle,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        GlobalState::Width, GlobalState::Height,
+        CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr, nullptr, hInstance, nullptr
     );
+
+    // Get Width/Height info from whichever monitor hWindow is on
+    MONITORINFO MonitorInfo = { sizeof(MonitorInfo) };
+    GetMonitorInfoA(MonitorFromWindow(hWindow, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo);
+    GlobalState::Width = MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left;
+    GlobalState::Height = MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top;
 
     ToggleFullscreen(hWindow);
 
