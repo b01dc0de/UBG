@@ -22,6 +22,8 @@ struct MemPool
     MemBlock AllocBlocks[MaxBlocks];
     size_t NumFree;
     MemBlock FreeBlocks[MaxBlocks];
+    size_t TotalAllocSize;
+    size_t TotalFreeSize;
 
     void Init(size_t Size)
     {
@@ -36,6 +38,9 @@ struct MemPool
         NumAlloc = 0;
         NumFree = 1;
         FreeBlocks[0] = { Size, DataPool };
+
+        TotalAllocSize = 0;
+        TotalFreeSize = Size;
     }
 
     void Term()
@@ -131,6 +136,9 @@ struct MemPool
                 }
             }
 
+            TotalAllocSize += NewAlloc.Size;
+            TotalFreeSize -= NewAlloc.Size;
+
             return NewAlloc.Data;
         }
         else
@@ -157,6 +165,8 @@ struct MemPool
         if (FoundIdx >= 0)
         {
             MemBlock NewFree = AllocBlocks[FoundIdx];
+            TotalAllocSize -= NewFree.Size;
+            TotalFreeSize += NewFree.Size;
             for (int Idx = FoundIdx; (Idx + 1) < NumAlloc; Idx++)
             {
                 AllocBlocks[Idx] = AllocBlocks[Idx + 1];
