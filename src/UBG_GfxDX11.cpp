@@ -29,23 +29,6 @@ struct DrawStateT
     ID3D11VertexShader* VertexShader;
     ID3D11PixelShader* PixelShader;
 
-    void Bind(ID3D11DeviceContext* Context)
-    {
-        Context->IASetInputLayout(InputLayout);
-        Context->VSSetShader(VertexShader, nullptr, 0);
-        Context->PSSetShader(PixelShader, nullptr, 0);
-    }
-
-    void SafeRelease()
-    {
-        ::SafeRelease(InputLayout);
-        ::SafeRelease(VertexShader);
-        ::SafeRelease(PixelShader);
-    }
-};
-
-struct ShaderStateT
-{
     static constexpr u32 MaxConstantBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
     static constexpr u32 MaxShaderRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
     static constexpr u32 MaxSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
@@ -58,6 +41,10 @@ struct ShaderStateT
 
     void Bind(ID3D11DeviceContext* Context)
     {
+        Context->IASetInputLayout(InputLayout);
+        Context->VSSetShader(VertexShader, nullptr, 0);
+        Context->PSSetShader(PixelShader, nullptr, 0);
+
         if (NumConstantBuffers)
         {
             Context->VSSetConstantBuffers(0, NumConstantBuffers, ConstantBuffers);
@@ -73,6 +60,13 @@ struct ShaderStateT
             Context->VSSetSamplers(0, NumSamplers, Samplers);
             Context->PSSetSamplers(0, NumSamplers, Samplers);
         }
+    }
+
+    void SafeRelease()
+    {
+        ::SafeRelease(InputLayout);
+        ::SafeRelease(VertexShader);
+        ::SafeRelease(PixelShader);
     }
 };
 
@@ -121,12 +115,9 @@ struct GfxPrivData
     static ID3D11Buffer* ViewProjBuffer;
 
     static DrawStateT DrawColor;
-    static ShaderStateT DrawColorShaderState;
     static DrawStateT DrawTexture;
-    static ShaderStateT DrawTextureShaderState;
     static DrawStateT DrawUnicolor;
     static ID3D11Buffer* UnicolorBuffer;
-    static ShaderStateT DrawUnicolorShaderState;
 
     static MeshStateT MeshTriangle;
     static MeshStateT MeshQuad;
@@ -148,12 +139,9 @@ ID3D11Buffer* GfxPrivData::WorldBuffer = {};
 ID3D11Buffer* GfxPrivData::ViewProjBuffer = {};
 
 DrawStateT GfxPrivData::DrawColor = {};
-ShaderStateT GfxPrivData::DrawColorShaderState = {};
 DrawStateT GfxPrivData::DrawTexture = {};
-ShaderStateT GfxPrivData::DrawTextureShaderState = {};
 DrawStateT GfxPrivData::DrawUnicolor = {};
 ID3D11Buffer* GfxPrivData::UnicolorBuffer = {};
-ShaderStateT GfxPrivData::DrawUnicolorShaderState = {};
 MeshStateT GfxPrivData::MeshTriangle = {};
 MeshStateT GfxPrivData::MeshQuad = {};
 MeshStateT GfxPrivData::MeshQuadMin = {};
@@ -176,7 +164,13 @@ DrawStateT CreateDrawState
     const wchar_t* ShaderFileName,
     const D3D_SHADER_MACRO* Defines,
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
-    size_t NumInputElements
+    size_t NumInputElements,
+    u32 NumConstantBuffers,
+    ID3D11Buffer** ConstantBuffers,
+    u32 NumShaderRVs,
+    ID3D11ShaderResourceView** ShaderRVs,
+    u32 NumSamplers,
+    ID3D11SamplerState** Samplers
 );
 MeshStateT CreateMeshState
 (
@@ -216,8 +210,6 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
     {
         MeshTriangle.Bind(Context);
         DrawColor.Bind(Context);
-        DrawColorShaderState.Bind(Context);
-
         MeshTriangle.Draw(Context);
     }
 
@@ -225,8 +217,6 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
     {
         MeshQuad.Bind(Context);
         DrawTexture.Bind(Context);
-        DrawTextureShaderState.Bind(Context);
-
         MeshQuad.Draw(Context);
     }
 
@@ -240,8 +230,6 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
 
         MeshQuadMin.Bind(Context);
         DrawUnicolor.Bind(Context);
-        DrawUnicolorShaderState.Bind(Context);
-
         MeshQuadMin.Draw(Context);
     }
 }
@@ -318,13 +306,11 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             L"src/hlsl/BaseShaderColor.hlsl",
             DefaultDefines,
             InputElements,
-            ARRAY_SIZE(InputElements)
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(WVPBuffers), WVPBuffers,
+            0, nullptr,
+            0, nullptr
         );
-
-        DrawColorShaderState = { ARRAY_SIZE(WVPBuffers), 0, 0 };
-        DrawColorShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawColorShaderState.ConstantBuffers[1] = WVPBuffers[1];
-
     }
 
     // Shader texture:
@@ -341,18 +327,24 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             L"src/hlsl/BaseShaderTexture.hlsl",
             DefaultDefines,
             InputElements,
-            ARRAY_SIZE(InputElements)
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(WVPBuffers), WVPBuffers,
+            1, &DefaultTextureSRV,
+            1, &DefaultSamplerState
         );
-
-        DrawTextureShaderState = { ARRAY_SIZE(WVPBuffers), 1, 1 };
-        DrawTextureShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawTextureShaderState.ConstantBuffers[1] = WVPBuffers[1];
-        DrawTextureShaderState.ShaderRVs[0] = DefaultTextureSRV;
-        DrawTextureShaderState.Samplers[0] = DefaultSamplerState;
     }
 
     // Shader unicolor:
     {
+        D3D11_BUFFER_DESC UnicolorBufferDesc = {};
+        UnicolorBufferDesc.ByteWidth = sizeof(v4f);
+        UnicolorBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        UnicolorBufferDesc.CPUAccessFlags = 0;
+        Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
+
+        ID3D11Buffer* CBuffers[] = { WorldBuffer, ViewProjBuffer, UnicolorBuffer };
+
         D3D11_INPUT_ELEMENT_DESC InputElements[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
@@ -364,20 +356,11 @@ bool GfxPrivData::Init(ID3D11Device* Device)
             L"src/hlsl/BaseShaderUnicolor.hlsl",
             DefaultDefines,
             InputElements,
-            ARRAY_SIZE(InputElements)
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(CBuffers), CBuffers,
+            0, nullptr,
+            0, nullptr
         );
-
-        D3D11_BUFFER_DESC UnicolorBufferDesc = {};
-        UnicolorBufferDesc.ByteWidth = sizeof(v4f);
-        UnicolorBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        UnicolorBufferDesc.CPUAccessFlags = 0;
-        Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
-
-        DrawUnicolorShaderState = { ARRAY_SIZE(WVPBuffers) + 1 };
-        DrawUnicolorShaderState.ConstantBuffers[0] = WVPBuffers[0];
-        DrawUnicolorShaderState.ConstantBuffers[1] = WVPBuffers[1];
-        DrawUnicolorShaderState.ConstantBuffers[2] = UnicolorBuffer;
     }
 
     // Mesh triangle:
@@ -768,7 +751,13 @@ DrawStateT CreateDrawState
     const wchar_t* ShaderFileName,
     const D3D_SHADER_MACRO* Defines,
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
-    size_t NumInputElements
+    size_t NumInputElements,
+    u32 NumConstantBuffers,
+    ID3D11Buffer** ConstantBuffers,
+    u32 NumShaderRVs,
+    ID3D11ShaderResourceView** ShaderRVs,
+    u32 NumSamplers,
+    ID3D11SamplerState** Samplers
 )
 {
     ASSERT(Device);
@@ -785,7 +774,7 @@ DrawStateT CreateDrawState
     CompileShaderHLSL(ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
     CompileShaderHLSL(ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
 
-    DrawStateT Result;
+    DrawStateT Result = {};
 
     if (VSBlob && PSBlob)
     {
@@ -793,9 +782,39 @@ DrawStateT CreateDrawState
         Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
 
         Device->CreateInputLayout(InputElements, (UINT)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
+
+
     }
     SafeRelease(VSBlob);
     SafeRelease(PSBlob);
+
+    ASSERT(!NumConstantBuffers || ConstantBuffers);
+    ASSERT(!NumShaderRVs || ShaderRVs);
+    ASSERT(!NumSamplers || Samplers);
+    if (NumConstantBuffers && ConstantBuffers)
+    {
+        Result.NumConstantBuffers = NumConstantBuffers;
+        for (u32 Idx = 0; Idx < NumConstantBuffers; Idx++)
+        {
+            Result.ConstantBuffers[Idx] = ConstantBuffers[Idx];
+        }
+    }
+    if (NumShaderRVs && ShaderRVs)
+    {
+        Result.NumShaderRVs = NumShaderRVs;
+        for (u32 Idx = 0; Idx < NumShaderRVs; Idx++)
+        {
+            Result.ShaderRVs[Idx] = ShaderRVs[Idx];
+        }
+    }
+    if (NumSamplers && Samplers)
+    {
+        Result.NumSamplers = NumSamplers;
+        for (u32 Idx = 0; Idx < NumSamplers; Idx++)
+        {
+            Result.Samplers[Idx] = Samplers[Idx];
+        }
+    }
 
     return Result;
 }
