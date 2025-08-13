@@ -303,8 +303,18 @@ struct MemoryImpl
     }
     static void Free(void* Ptr)
     {
-        ASSERT(bInit);
-        Transient.Free(Ptr);
+        // TODO: Remove this once we remove all statics that allocate data!
+        constexpr bool bTmpAllowStaticFreeSoftFail = true;
+        if (bTmpAllowStaticFreeSoftFail)
+        {
+            if (!bInit) {} // Data we own is already cleared out, do nothing
+            else { Transient.Free(Ptr); }
+        }
+        else
+        {
+            ASSERT(bInit);
+            Transient.Free(Ptr);
+        }
     }
 };
 

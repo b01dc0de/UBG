@@ -2,7 +2,34 @@
 #define ARRAY_H
 
 template <typename T>
-struct Array
+struct SArray
+{
+    u32 Capacity;
+    T* Data;
+
+    void Init(u32 _Capacity)
+    {
+        Capacity = _Capacity;
+        Data = new T[Capacity];
+    }
+    void Term()
+    {
+        if (Data)
+        {
+            delete[] Data;
+            Data = nullptr;
+        }
+    }
+
+    T& operator[](u32 Idx)
+    {
+        ASSERT(Idx < Capacity);
+        return Data[Idx];
+    }
+};
+
+template <typename T>
+struct DArray
 {
     size_t Capacity;
     size_t Num;
@@ -11,15 +38,33 @@ struct Array
     static constexpr size_t DefaultInitCapacity = 32;
     static constexpr float DefaultGrowthFactor = 2.0f;
 
-    Array(size_t InitCapacity = DefaultInitCapacity)
+    void Init(size_t InitCapacity = DefaultInitCapacity)
     {
         Capacity = InitCapacity;
         Num = 0u;
-        Data = new T[Capacity];
+        // NOTE(CKA): I'm adding this path temporarily so that I can have static DArrays
+        //            Want to remove this after RenderEntity/System is fully setup
+        if (InitCapacity) { Data = new T[Capacity]; }
+        else { Data = nullptr; }
     }
-    Array& operator=(const Array& Other) = delete;
-    Array(const Array& Other) = delete;
-    Array& operator=(Array&& Other)
+    void Term()
+    {
+        if (Data)
+        {
+            delete[] Data;
+            Capacity = 0;
+            Num = 0;
+            Data = nullptr;
+        }
+    }
+
+    DArray(size_t InitCapacity = DefaultInitCapacity)
+    {
+        Init(InitCapacity);
+    }
+    DArray& operator=(const DArray& Other) = delete;
+    DArray(const DArray& Other) = delete;
+    DArray& operator=(DArray&& Other)
     {
         Capacity = Other.Capacity;
         Num = Other.Num;
@@ -31,21 +76,40 @@ struct Array
 
         return *this;
     }
-    Array(Array&& Other)
+    DArray(DArray&& Other)
     {
-        (void)operator=((Array&&)Other);
+        (void)operator=((DArray&&)Other);
     }
-    ~Array() = default;
+    ~DArray()
+    {
+        Term();
+    }
 
+    void Resize(size_t NewCapacity)
+    {
+        ASSERT(NewCapacity > Capacity); // Only support growing arrays for now
+        if (Data)
+        {
+            T* OldData = Data;
+
+            Capacity = NewCapacity;
+            Data = new T[Capacity];
+
+            memcpy(Data, OldData, sizeof(T) * Num);
+            delete[] OldData;
+        }
+        else
+        {
+            Init(NewCapacity);
+        }
+    }
+    void Reserve(size_t NewCapacity)
+    {
+        Resize(NewCapacity);
+    }
     void Grow()
     {
-        T* OldData = Data;
-
-        Capacity = (size_t)(Capacity * DefaultGrowthFactor);
-        Data = new T[Capacity];
-
-        memcpy(Data, OldData, sizeof(T) * Num);
-        delete[] OldData;
+        Resize((size_t)(Capacity * DefaultGrowthFactor));
     }
 
     void Add(const T& Item)
@@ -68,6 +132,15 @@ struct Array
         for (size_t Idx = Num; Idx < NewNum; Idx++)
         {
             Data[Idx] = List[Idx];
+        }
+        Num = NewNum;
+    }
+    void AddUninit(size_t Count)
+    {
+        size_t NewNum = Num + Count;
+        while (NewNum >= Capacity)
+        {
+            Grow();
         }
         Num = NewNum;
     }

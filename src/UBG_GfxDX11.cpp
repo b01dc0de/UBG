@@ -70,43 +70,34 @@ struct DrawStateT
     }
 };
 
-struct MeshStateT
+void MeshStateT::Bind(ID3D11DeviceContext* Context)
 {
-    size_t VertexSize;
-    size_t NumVerts;
-    size_t NumInds;
-    ID3D11Buffer* VxBuffer;
-    ID3D11Buffer* IxBuffer;
+    u32 VxStride = (u32)VertexSize;
+    u32 VxOffset = 0u;
+    Context->IASetVertexBuffers(0, 1, &VxBuffer, &VxStride, &VxOffset);
+    Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+    Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
 
-    void Bind(ID3D11DeviceContext* Context)
+void MeshStateT::Draw(ID3D11DeviceContext* Context)
+{
+    if (IxBuffer)
     {
-        u32 VxStride = (u32)VertexSize;
-        u32 VxOffset = 0u;
-        Context->IASetVertexBuffers(0, 1, &VxBuffer, &VxStride, &VxOffset);
-        Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        Context->DrawIndexed((u32)NumInds, 0, 0);
     }
-
-    void Draw(ID3D11DeviceContext* Context)
+    else
     {
-        if (IxBuffer)
-        {
-            Context->DrawIndexed((u32)NumInds, 0, 0);
-        }
-        else
-        {
-            Context->Draw((u32)NumVerts, 0);
-        }
+        Context->Draw((u32)NumVerts, 0);
     }
+}
 
-    void SafeRelease()
-    {
-        ::SafeRelease(VxBuffer);
-        ::SafeRelease(IxBuffer);
-    }
-};
+void MeshStateT::SafeRelease()
+{
+    ::SafeRelease(VxBuffer);
+    ::SafeRelease(IxBuffer);
+}
 
-struct GfxPrivData
+struct GfxImpl
 {
     static ID3D11Texture2D* DefaultTexture;
     static ID3D11ShaderResourceView* DefaultTextureSRV;
@@ -125,6 +116,11 @@ struct GfxPrivData
 
     static Camera CameraO;
 
+    static RenderEntitySystem RE_System;
+    static RenderEntityID RE_ColorTriangle;
+    static RenderEntityID RE_QuadTexture;
+    static RenderEntityID RE_QuadUnicolor;
+
     static void Draw(ID3D11DeviceContext* Context);
     static void DrawDemo(ID3D11DeviceContext* Context);
     static void DrawGame(ID3D11DeviceContext* Context);
@@ -132,21 +128,26 @@ struct GfxPrivData
     static bool Term();
 };
 
-ID3D11Texture2D* GfxPrivData::DefaultTexture = {};
-ID3D11ShaderResourceView* GfxPrivData::DefaultTextureSRV = {};
-ID3D11SamplerState* GfxPrivData::DefaultSamplerState = {};
-ID3D11Buffer* GfxPrivData::WorldBuffer = {};
-ID3D11Buffer* GfxPrivData::ViewProjBuffer = {};
+ID3D11Texture2D* GfxImpl::DefaultTexture = {};
+ID3D11ShaderResourceView* GfxImpl::DefaultTextureSRV = {};
+ID3D11SamplerState* GfxImpl::DefaultSamplerState = {};
+ID3D11Buffer* GfxImpl::WorldBuffer = {};
+ID3D11Buffer* GfxImpl::ViewProjBuffer = {};
 
-DrawStateT GfxPrivData::DrawColor = {};
-DrawStateT GfxPrivData::DrawTexture = {};
-DrawStateT GfxPrivData::DrawUnicolor = {};
-ID3D11Buffer* GfxPrivData::UnicolorBuffer = {};
-MeshStateT GfxPrivData::MeshTriangle = {};
-MeshStateT GfxPrivData::MeshQuad = {};
-MeshStateT GfxPrivData::MeshQuadMin = {};
+DrawStateT GfxImpl::DrawColor = {};
+DrawStateT GfxImpl::DrawTexture = {};
+DrawStateT GfxImpl::DrawUnicolor = {};
+ID3D11Buffer* GfxImpl::UnicolorBuffer = {};
+MeshStateT GfxImpl::MeshTriangle = {};
+MeshStateT GfxImpl::MeshQuad = {};
+MeshStateT GfxImpl::MeshQuadMin = {};
 
-Camera GfxPrivData::CameraO = {};
+Camera GfxImpl::CameraO = {};
+
+RenderEntitySystem GfxImpl::RE_System = {0};
+RenderEntityID GfxImpl::RE_ColorTriangle = {};
+RenderEntityID GfxImpl::RE_QuadTexture = {};
+RenderEntityID GfxImpl::RE_QuadUnicolor = {};
 
 v4f GetRandomColorDim();
 void GetClearColor(v4f& OutClearColor);
@@ -182,9 +183,130 @@ MeshStateT CreateMeshState
     unsigned int* IndexData
 );
 
-void GfxPrivData::Draw(ID3D11DeviceContext* Context)
+void RenderEntitySystem::Init()
 {
-    constexpr bool bDrawDemo = true;
+    Entities.Reserve(MaxEntities);
+    CounterID = 0;
+}
+
+void RenderEntitySystem::Term()
+{
+    Entities.Term();
+}
+
+RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
+{
+    // TODO: Actually make this a fast ID lookup, not just searching through
+    RenderEntity* Result = nullptr;
+    for (size_t Idx = 0; Idx < Entities.Num; Idx++)
+    {
+        if (Entities[Idx].ID == ID)
+        {
+            Result = &Entities[Idx];
+            break;
+        }
+    }
+    return Result;
+}
+
+RenderEntityID RenderEntitySystem::Create()
+{
+    ASSERT(Entities.Num < MaxEntities);
+    RenderEntityID NewID = CounterID++;
+    RenderEntity NewEntity = {};
+    NewEntity.ID = NewID;
+    Entities.Add(NewEntity);
+    return NewID;
+}
+
+void RenderEntitySystem::Destroy(RenderEntityID ID)
+{
+    RenderEntity* ToDestroy = Get(ID);
+    ASSERT(ToDestroy);
+    if (ToDestroy)
+    {
+        size_t IdxToRemove = ToDestroy - Entities.Data;
+        ASSERT(IdxToRemove < Entities.Num);
+        if (IdxToRemove < Entities.Num)
+        {
+            Entities.RemoveQ(IdxToRemove);
+        }
+    }
+}
+
+void RenderEntitySystem::DrawAll(ID3D11DeviceContext* Context)
+{
+    Context->UpdateSubresource(GfxImpl::ViewProjBuffer, 0, nullptr, &GfxImpl::CameraO, (u32)sizeof(GfxImpl::CameraO), 0);
+
+    for (size_t Idx = 0; Idx < Entities.Num; Idx++)
+    {
+        if (Entities[Idx].bVisible)
+        {
+            Entities[Idx].Draw(Context);
+        }
+    }
+}
+
+void RenderEntity::UpdateWorld(ID3D11DeviceContext* Context)
+{
+    Context->UpdateSubresource(GfxImpl::WorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
+}
+
+void RenderEntity::Draw(ID3D11DeviceContext* Context)
+{
+    ASSERT(bVisible);
+
+    switch (Type)
+    {
+        case DrawType::Color:
+        {
+            UpdateWorld(Context);
+            Mesh->Bind(Context);
+            GfxImpl::DrawColor.Bind(Context);
+            Mesh->Draw(Context);
+        } break;
+        case DrawType::Texture:
+        {
+            UpdateWorld(Context);
+            Mesh->Bind(Context);
+            //GfxImpl::DrawTexture.Bind(Context);
+            {
+                Context->IASetInputLayout(GfxImpl::DrawTexture.InputLayout);
+                Context->VSSetShader(GfxImpl::DrawTexture.VertexShader, nullptr, 0);
+                Context->PSSetShader(GfxImpl::DrawTexture.PixelShader, nullptr, 0);
+                if (GfxImpl::DrawTexture.NumConstantBuffers)
+                {
+                    Context->VSSetConstantBuffers(0, GfxImpl::DrawTexture.NumConstantBuffers, GfxImpl::DrawTexture.ConstantBuffers);
+                    Context->PSSetConstantBuffers(0, GfxImpl::DrawTexture.NumConstantBuffers, GfxImpl::DrawTexture.ConstantBuffers);
+                }
+                Context->VSSetShaderResources(0, 1, &TextureState.TextureSRV);
+                Context->PSSetShaderResources(0, 1, &TextureState.TextureSRV);
+                Context->VSSetSamplers(0, 1, &TextureState.Sampler);
+                Context->PSSetSamplers(0, 1, &TextureState.Sampler);
+            }
+            Mesh->Draw(Context);
+        } break;
+        case DrawType::Unicolor:
+        {
+            UpdateWorld(Context);
+            Context->UpdateSubresource(GfxImpl::WorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
+            v4f UnicolorBufferData[4] = { UnicolorState.Color };
+            Context->UpdateSubresource(GfxImpl::UnicolorBuffer, 0, nullptr, UnicolorBufferData, (u32)sizeof(UnicolorBufferData), 0);
+            Mesh->Bind(Context);
+            GfxImpl::DrawUnicolor.Bind(Context);
+            Mesh->Draw(Context);
+        } break;
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
+}
+
+
+void GfxImpl::Draw(ID3D11DeviceContext* Context)
+{
+    constexpr bool bDrawDemo = false;
 
     if (bDrawDemo)
     {
@@ -196,7 +318,7 @@ void GfxPrivData::Draw(ID3D11DeviceContext* Context)
     }
 }
 
-void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
+void GfxImpl::DrawDemo(ID3D11DeviceContext* Context)
 {
     float HalfWidth = GlobalState::Width * 0.5f;
     float HalfHeight = GlobalState::Height * 0.5f;
@@ -204,8 +326,6 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
     Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (u32)sizeof(m4f), 0);
     Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (u32)sizeof(CameraO), 0);
 
-    ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
-    
     // MeshTriangle / DrawColor / DrawColorShaderState:
     {
         MeshTriangle.Bind(Context);
@@ -234,12 +354,12 @@ void GfxPrivData::DrawDemo(ID3D11DeviceContext* Context)
     }
 }
 
-void GfxPrivData::DrawGame(ID3D11DeviceContext* Context)
+void GfxImpl::DrawGame(ID3D11DeviceContext* Context)
 {
-    (void)Context;
+    RE_System.DrawAll(Context);
 }
 
-bool GfxPrivData::Init(ID3D11Device* Device)
+bool GfxImpl::Init(ID3D11Device* Device)
 {
     // Default texture / sampler:
     {
@@ -437,13 +557,56 @@ bool GfxPrivData::Init(ID3D11Device* Device)
 
     // TODO: Why is Depth passed as -2?
     CameraO.Ortho((float)GlobalState::Width, (float)GlobalState::Height, -2.0f);
-    
+
+    RE_System.Init();
+    RE_ColorTriangle = RE_System.Create();
+    RE_QuadTexture = RE_System.Create();
+    RE_QuadUnicolor = RE_System.Create();
+
+    RenderEntity* ColorTriangleData = RE_System.Get(RE_ColorTriangle);
+    RenderEntity* QuadTextureData = RE_System.Get(RE_QuadTexture);
+    RenderEntity* QuadUnicolorData = RE_System.Get(RE_QuadUnicolor);
+    ASSERT(ColorTriangleData);
+    ASSERT(QuadTextureData);
+    ASSERT(QuadUnicolorData);
+    float HalfWidth = GlobalState::Width * 0.5f;
+    float HalfHeight = GlobalState::Height * 0.5f;
+    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+    if (ColorTriangleData)
+    {
+        ColorTriangleData->bVisible = true;
+        ColorTriangleData->World = SpriteWorld;
+        ColorTriangleData->Type = DrawType::Color;
+        ColorTriangleData->Mesh = &GfxImpl::MeshTriangle;
+        ColorTriangleData->ColorState = {};
+    }
+    if (QuadTextureData)
+    {
+        QuadTextureData->bVisible = true;
+        QuadTextureData->World = SpriteWorld;
+        QuadTextureData->Type = DrawType::Texture;
+        QuadTextureData->Mesh = &GfxImpl::MeshQuad;
+        QuadTextureData->TextureState = { };
+        QuadTextureData->TextureState.Texture = DefaultTexture;
+        QuadTextureData->TextureState.TextureSRV = DefaultTextureSRV;
+        QuadTextureData->TextureState.Sampler = DefaultSamplerState;
+    }
+    if (QuadUnicolorData)
+    {
+        QuadUnicolorData->bVisible = true;
+        QuadUnicolorData->World = SpriteWorld;
+        QuadUnicolorData->Type = DrawType::Unicolor;
+        QuadUnicolorData->Mesh = &GfxImpl::MeshQuadMin;
+        QuadUnicolorData->UnicolorState.Color = GetRandomColorDim();
+    }
     // TODO: Check for correct init'd state here
     return true;
 }
 
-bool GfxPrivData::Term()
+bool GfxImpl::Term()
 {
+    RE_System.Term();
+
     SafeRelease(DefaultTexture);
     SafeRelease(DefaultTextureSRV);
     SafeRelease(DefaultSamplerState);
@@ -483,7 +646,7 @@ void UBG_Gfx_DX11::DrawEnd()
 void UBG_Gfx_DX11::Draw()
 {
     DrawBegin();
-    GfxPrivData::Draw(Context);
+    GfxImpl::Draw(Context);
     DrawEnd();
 }
 
@@ -588,7 +751,7 @@ bool UBG_Gfx_DX11::Init()
         RenderTargetView && RasterState &&
         DepthStencil && DepthStencilView;
 
-    bResult &= GfxPrivData::Init(Device);
+    bResult &= GfxImpl::Init(Device);
 
     ASSERT(bResult);
 

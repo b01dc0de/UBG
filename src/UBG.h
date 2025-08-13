@@ -12,8 +12,10 @@ struct GlobalState
     static int Height;
 };
 
+// TODO: Define _precisely_ exactly what structs/functions Platforms and GraphicsBackends need to implement/override
 extern void Outf(const char* Fmt, ...);
-#define DEBUG_BREAKPOINT() DebugBreak()
+extern void DebugBreakpoint();
+#define DEBUG_BREAKPOINT() DebugBreakpoint()
 #define UNUSED_VAR(Var) (void)Var
 #define ASSERT(Expr) if (!(Expr)) { Outf("[assert] FAILED\n\tExp: %s\n\tFile: %s\tLine: %d\n\tFunc: %s", #Expr, __FILE__, __LINE__, __FUNCSIG__); DEBUG_BREAKPOINT(); }
 #define ARRAY_SIZE(Array) (sizeof((Array)) / sizeof((Array)[0]))

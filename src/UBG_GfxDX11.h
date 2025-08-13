@@ -28,5 +28,73 @@ struct UBG_Gfx_DX11
 
 using UBG_GfxT = UBG_Gfx_DX11;
 
+struct MeshStateT
+{
+    size_t VertexSize;
+    size_t NumVerts;
+    size_t NumInds;
+    ID3D11Buffer* VxBuffer;
+    ID3D11Buffer* IxBuffer;
+
+    void Bind(ID3D11DeviceContext* Context);
+    void Draw(ID3D11DeviceContext* Context);
+    void SafeRelease();
+};
+
+enum struct DrawType
+{
+    Color,
+    Texture,
+    Unicolor
+};
+
+struct DrawColorState { }; // Nothing needed for now
+
+struct DrawTextureState
+{
+    ID3D11Texture2D* Texture;
+    ID3D11ShaderResourceView* TextureSRV;
+    ID3D11SamplerState* Sampler;
+};
+
+struct DrawUnicolorState
+{
+    v4f Color;
+};
+
+using RenderEntityID = u32;
+
+struct RenderEntity
+{
+    RenderEntityID ID;
+    bool bVisible;
+    m4f World;
+    DrawType Type;
+    MeshStateT* Mesh;
+    union
+    {
+        DrawColorState ColorState;
+        DrawTextureState TextureState;
+        DrawUnicolorState UnicolorState;
+    };
+
+    void UpdateWorld(ID3D11DeviceContext* Context);
+    void Draw(ID3D11DeviceContext* Context);
+};
+
+struct RenderEntitySystem
+{
+    static constexpr size_t MaxEntities = 1024;
+    DArray<RenderEntity> Entities;
+    RenderEntityID CounterID;
+
+    void Init();
+    void Term();
+    RenderEntity* Get(RenderEntityID ID);
+    RenderEntityID Create();
+    void Destroy(RenderEntityID ID);
+    void DrawAll(ID3D11DeviceContext* Context);
+};
+
 #endif // UBG_GFXDX11_H
 

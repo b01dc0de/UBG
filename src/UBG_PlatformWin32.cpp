@@ -13,6 +13,11 @@ void Outf(const char* Fmt, ...)
     OutputDebugStringA(MsgBuffer);
 }
 
+void DebugBreakpoint()
+{
+    DebugBreak();
+}
+
 HINSTANCE UBG_Platform_Win32::hInstance = {};
 HWND UBG_Platform_Win32::hWindow = {};
 //HINSTANCE UBG_Platform_Win32::hPrevInstance = {};
@@ -24,7 +29,9 @@ void HandleKeyboardInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
     UNUSED_VAR(lParam);
     switch (uMsg)
     {
+        case WM_SYSKEYDOWN:
         case WM_KEYDOWN: { KeyboardState::SetKeyDown((int)wParam); } break;
+        case WM_SYSKEYUP:
         case WM_KEYUP: { KeyboardState::SetKeyUp((int)wParam); } break;
         default:
         {

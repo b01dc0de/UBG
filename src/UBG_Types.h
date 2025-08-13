@@ -66,5 +66,7 @@ struct m4f
     static m4f Trans(f32 X, f32 Y, f32 Z);
 };
 
+#include "Array.h"
+
 #endif // TYPES_H
 
