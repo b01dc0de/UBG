@@ -5,6 +5,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+// C/C++ std lib headers:
+#include <stdio.h>
+
 struct UBG_Platform_Win32
 {
     static HINSTANCE hInstance;

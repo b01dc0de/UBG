@@ -1,17 +1,6 @@
 #ifndef UBG_H
 #define UBG_H
 
-// C/C++ std lib headers:
-#include <stdio.h>
-#include <stdlib.h>
-
-struct GlobalState
-{
-    static bool bRunning;
-    static int Width;
-    static int Height;
-};
-
 // TODO: Define _precisely_ exactly what structs/functions Platforms and GraphicsBackends need to implement/override
 extern void Outf(const char* Fmt, ...);
 extern void DebugBreakpoint();
@@ -19,6 +8,21 @@ extern void DebugBreakpoint();
 #define UNUSED_VAR(Var) (void)Var
 #define ASSERT(Expr) if (!(Expr)) { Outf("[assert] FAILED\n\tExp: %s\n\tFile: %s\tLine: %d\n\tFunc: %s", #Expr, __FILE__, __LINE__, __FUNCSIG__); DEBUG_BREAKPOINT(); }
 #define ARRAY_SIZE(Array) (sizeof((Array)) / sizeof((Array)[0]))
+
+// Engine definition
+struct UBGame;
+struct UBG_Engine
+{
+    bool bRunning;
+    int Width;
+    int Height;
+    UBGame* Instance;
+
+    void GameLoop();
+    bool Init();
+    bool Term();
+};
+extern UBG_Engine* GlobalEngine;
 
 // Common types:
 #include "UBG_Types.h"

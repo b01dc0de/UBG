@@ -3,8 +3,8 @@
 
 struct UBGame
 {
-    void Init();
-    void Term();
+    bool Init();
+    bool Term();
     void Update();
     void Draw();
 };

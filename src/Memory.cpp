@@ -14,6 +14,9 @@ struct MemBlock
 struct MemPool
 {
     static constexpr size_t MaxBlocks = 1024;
+#if _DEBUG
+    static constexpr bool bDebugPrint = true;
+#endif // _DEBUG
 
     size_t DataSize;
     void* DataPool;
@@ -71,6 +74,7 @@ struct MemPool
             }
         }
         ASSERT(FoundIdx != -1);
+        bool bSplitFreeBlock = false;
         if (FoundIdx >= 0)
         {
             MemBlock NewAlloc = {};
@@ -85,6 +89,7 @@ struct MemPool
             }
             else if (FreeBlocks[FoundIdx].Size > Size)
             {
+                bSplitFreeBlock = true;
                 NewAlloc = { Size, FreeBlocks[FoundIdx].Data };
                 FreeBlocks[FoundIdx].Data = (u8*)FreeBlocks[FoundIdx].Data + Size;
                 FreeBlocks[FoundIdx].Size -= Size;
@@ -95,22 +100,20 @@ struct MemPool
             if (NumAlloc == 0)
             {
                 AllocBlocks[0] = NewAlloc;
-                NumAlloc++;
             }
             // Case 2: NewAlloc comes before the first alloc
-            else if (NumAlloc > 0 && NewAlloc.Data < AllocBlocks[0].Data)
+            else if (NewAlloc.Data < AllocBlocks[0].Data)
             {
                 for (int ShiftUpIdx = (int)NumAlloc; ShiftUpIdx > 0; ShiftUpIdx--)
                 {
                     AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
                 }
                 AllocBlocks[0] = NewAlloc;
-                NumAlloc++;
             }
             // Case 3: NewAlloc comes after last alloc
-            else if (NumAlloc > 0 && NewAlloc.Data > AllocBlocks[NumAlloc - 1].Data)
+            else if (NewAlloc.Data > AllocBlocks[NumAlloc - 1].Data)
             {
-                AllocBlocks[NumAlloc++] = NewAlloc;
+                AllocBlocks[NumAlloc] = NewAlloc;
             }
             // Case 4: NewAlloc comes in the middle of other allocs
             else
@@ -119,9 +122,10 @@ struct MemPool
                 for (int Idx = 0; (Idx + 1) < NumAlloc; Idx++)
                 {
                     if (AllocBlocks[Idx].Data < NewAlloc.Data &&
-                        AllocBlocks[Idx + 1].Data < NewAlloc.Data)
+                        NewAlloc.Data < AllocBlocks[Idx + 1].Data)
                     {
                         NewAllocIdx = Idx + 1;
+                        break;
                     }
                 }
                 ASSERT(NewAllocIdx >= 0);
@@ -132,12 +136,24 @@ struct MemPool
                         AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
                     }
                     AllocBlocks[NewAllocIdx] = NewAlloc;
-                    NumAlloc++;
                 }
             }
 
             TotalAllocSize += NewAlloc.Size;
             TotalFreeSize -= NewAlloc.Size;
+            NumAlloc++;
+            if (!bSplitFreeBlock)
+            {
+                NumFree--;
+            }
+
+        #if _DEBUG
+            if (bDebugPrint)
+            {
+                Outf("[memory][debug] Alloc'd new ptr (%llu bytes) at 0x%X\n", NewAlloc.Size, NewAlloc.Data);
+                DebugPrint();
+            }
+        #endif // _DEBUG
 
             return NewAlloc.Data;
         }
@@ -165,111 +181,182 @@ struct MemPool
         if (FoundIdx >= 0)
         {
             MemBlock NewFree = AllocBlocks[FoundIdx];
-            TotalAllocSize -= NewFree.Size;
-            TotalFreeSize += NewFree.Size;
+            // Shift all alloc blocks, removing the newly freed one
             for (int Idx = FoundIdx; (Idx + 1) < NumAlloc; Idx++)
             {
                 AllocBlocks[Idx] = AllocBlocks[Idx + 1];
             }
+            AllocBlocks[NumAlloc - 1] = {}; // Clear out last allocated block
 
             // Check if NewFree can be coalesced (is adjacent to other free blocks)
             bool bCoalesced = false;
             int NewFreeIdx = -1;
+            void* NewFreeBegin = (u8*)NewFree.Data;
+            void* NewFreeEnd = (u8*)NewFree.GetBlockEnd();
 
-            for (int Idx = 0; (Idx + 1) < NumFree; Idx++)
+            // Case 1: No currently free blocks
+            if (NumFree == 0)
             {
-                bool bFreeBefore = FreeBlocks[Idx].GetBlockEnd() == NewFree.Data;
-                bool bFreeAfter = NewFree.GetBlockEnd() == FreeBlocks[Idx + 1].Data;
-
-                // Case 1: NewFree is between two free blocks
-                if (bFreeBefore && bFreeAfter)
-                {
-                    size_t CoalescedSize = FreeBlocks[Idx].Size + NewFree.Size + FreeBlocks[Idx + 1].Size;
-                    FreeBlocks[Idx].Size = CoalescedSize;
-
-                    for (int ShiftDownIdx = Idx + 1; (ShiftDownIdx + 1) < NumFree; ShiftDownIdx++)
-                    {
-                        FreeBlocks[ShiftDownIdx] = FreeBlocks[ShiftDownIdx + 1];
-                    }
-                    FreeBlocks[--NumFree] = {};
-
-                    bCoalesced = true;
-                    break;
-                }
-                // Case 2: NewFree is after a free block
-                else if (bFreeBefore)
-                {
-                    size_t CoalescedSize = FreeBlocks[Idx].Size + NewFree.Size;
-                    FreeBlocks[Idx].Size = CoalescedSize;
-
-                    bCoalesced = true;
-                    break;
-                }
-                // Case 3: NewFree is before a free block
-                else if (bFreeAfter)
-                {
-                    size_t CoalescedSize = FreeBlocks[Idx + 1].Size + NewFree.Size;
-                    FreeBlocks[Idx].Data = NewFree.Data;
-                    FreeBlocks[Idx].Size = CoalescedSize;
-
-                    bCoalesced = true;
-                    break;
-                }
-
-                // Case 4: NewFree is between two alloc blocks
-                if (!bCoalesced &&
-                    ((u8*)FreeBlocks[Idx].Data < (u8*)NewFree.Data) &&
-                    ((u8*)NewFree.Data < (u8*)FreeBlocks[Idx + 1].Data))
-                {
-                    NewFreeIdx = Idx + 1;
-                    break;
-                }
+                NewFreeIdx = 0;
+                FreeBlocks[NewFreeIdx] = NewFree;
             }
-
-            // Case 5: NewFree is first or last free block
-            if (!bCoalesced && NewFreeIdx == -1)
+            // Case 2: NewFree will be coalesced with first block
+            else if (NewFreeEnd == FreeBlocks[0].Data)
             {
-                bool bComesFirst = (u8*)NewFree.Data < (u8*)FreeBlocks[0].Data;
-                bool bComesLast = (u8*)FreeBlocks[NumFree - 1].Data < (u8*)NewFree.Data;
-                ASSERT(bComesFirst != bComesLast);
-
-                if (bComesFirst)
-                {
-                    for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > 0; ShiftUpIdx--)
-                    {
-                        FreeBlocks[ShiftUpIdx] = FreeBlocks[ShiftUpIdx - 1];
-                    }
-                    FreeBlocks[0] = NewFree;
-                    NumFree++;
-                }
-                else if (bComesLast)
-                {
-                    FreeBlocks[NumFree++] = NewFree;
-                }
-                else
-                {
-                    ASSERT(false); // TODO: Remove once tested
-                }
+                bCoalesced = true;
+                FreeBlocks[0].Size += NewFree.Size;
+                FreeBlocks[0].Data = (u8*)FreeBlocks[0].Data - NewFree.Size;
             }
-            else if (!bCoalesced && NewFreeIdx >= 0)
+            // Case 2: NewFree will be inserted at first
+            else if (NewFreeEnd < FreeBlocks[0].Data)
             {
-                for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > NewFreeIdx; ShiftUpIdx++)
+                for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > 0; ShiftUpIdx--)
                 {
                     FreeBlocks[ShiftUpIdx] = FreeBlocks[ShiftUpIdx - 1];
                 }
+                NewFreeIdx = 0;
                 FreeBlocks[NewFreeIdx] = NewFree;
-                NumFree++;
             }
+            // Case 3: NewFree will be coalesced with last block
+            else if (NewFreeBegin == FreeBlocks[NumFree - 1].Data)
+            {
+                bCoalesced = true;
+                FreeBlocks[NumFree - 1].Size += NewFree.Size;
+            }
+            // Case 4: NewFree will be appended to end
+            else if (FreeBlocks[NumFree - 1].Data < NewFreeEnd)
+            {
+                NewFreeIdx = (int)NumFree;
+                FreeBlocks[NewFreeIdx] = NewFree;
+            }
+            // Case 5: NewFree will be inserted between two other free blocks
             else
             {
-                ASSERT(false); // TODO: Remove once tested
+                for (int Idx = 1; (Idx + 1) < NumFree; Idx++)
+                {
+                    u8* BeforeBlockEnd = (u8*)FreeBlocks[Idx].GetBlockEnd();
+                    u8* NextBlockBegin = (Idx + 1) < NumFree ? (u8*)FreeBlocks[Idx + 1].Data : nullptr;
+
+                    bool bFreeBefore = BeforeBlockEnd == NewFreeBegin;
+                    bool bFreeAfter = NewFreeEnd == NextBlockBegin;
+
+                    // Case 5.A: NewFree will be coalesced with blocks before and after
+                    if (bFreeBefore && bFreeAfter)
+                    {
+                        size_t CoalescedSize = FreeBlocks[Idx].Size + NewFree.Size + FreeBlocks[Idx + 1].Size;
+                        FreeBlocks[Idx].Size = CoalescedSize;
+
+                        for (int ShiftDownIdx = Idx + 1; (ShiftDownIdx + 1) < NumFree; ShiftDownIdx++)
+                        {
+                            FreeBlocks[ShiftDownIdx] = FreeBlocks[ShiftDownIdx + 1];
+                        }
+                        FreeBlocks[--NumFree] = {};
+
+                        bCoalesced = true;
+                        break;
+                    }
+                    // Case 5.B: NewFree will be coalesced with adjcent block before
+                    else if (bFreeBefore)
+                    {
+                        size_t CoalescedSize = FreeBlocks[Idx].Size + NewFree.Size;
+                        FreeBlocks[Idx].Size = CoalescedSize;
+
+                        bCoalesced = true;
+                        break;
+                    }
+                    // Case 5.C: NewFree will be coalesced with adjacent block after
+                    else if (bFreeAfter)
+                    {
+                        size_t CoalescedSize = FreeBlocks[Idx + 1].Size + NewFree.Size;
+                        FreeBlocks[Idx].Data = NewFree.Data;
+                        FreeBlocks[Idx].Size = CoalescedSize;
+
+                        bCoalesced = true;
+                        break;
+                    }
+
+                    // Case 4: NewFree is between two alloc blocks
+                    if (!bCoalesced &&
+                        ((u8*)FreeBlocks[Idx].Data < (u8*)NewFree.Data) &&
+                        ((u8*)NewFree.Data < (u8*)FreeBlocks[Idx + 1].Data))
+                    {
+                        NewFreeIdx = Idx + 1;
+                        break;
+                    }
+                }
             }
+
+            ASSERT(bCoalesced || NewFreeIdx >= 0);
+            TotalAllocSize -= NewFree.Size;
+            TotalFreeSize += NewFree.Size;
+            NumAlloc--;
+            if (!bCoalesced) { NumFree++; }
         }
         else
         {
             ASSERT(false);
         }
+
+    #if _DEBUG
+        if (bDebugPrint)
+        {
+            Outf("[memory][debug] Free'd 0x%X\n", Ptr);
+            DebugPrint();
+        }
+    #endif // _DEBUG
     }
+
+#if _DEBUG
+    void DebugPrint()
+    {
+        double PercentAlloc = ((double)TotalAllocSize / (double)DataSize) * 100.0;
+        double PercentFree = ((double)TotalFreeSize / (double)DataSize) * 100.0;
+        Outf("[memory][debug] Total Allocated (%0.2f%%): %llu bytes\tNumBlocks: %llu\n", PercentAlloc, TotalAllocSize, NumAlloc);
+        Outf("\tTotal Free (%0.2f%%): %llu bytes\tNumBlocks: %llu\n", PercentFree, TotalFreeSize, NumFree);
+        size_t NextAllocIdx = 0;
+        size_t NextFreeIdx = 0;
+        size_t NumTotalBlocks = NumAlloc + NumFree;
+        for (size_t BlockIdx = 0; BlockIdx < NumTotalBlocks; BlockIdx++)
+        {
+            void* NextAlloc = NextAllocIdx < NumAlloc ? AllocBlocks[NextAllocIdx].Data : nullptr;
+            void* NextFree = NextFreeIdx < NumFree ? FreeBlocks[NextFreeIdx].Data : nullptr;
+
+            if (NextAlloc && NextFree)
+            {
+                if (NextAlloc < NextFree)
+                {
+                    size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
+                    Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
+                    NextAllocIdx++;
+                }
+                else if (NextFree < NextAlloc)
+                {
+                    size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
+                    Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
+                    NextFreeIdx++;
+                }
+                else { ASSERT(false); }
+            }
+            else
+            {
+                if (NextAlloc)
+                {
+                    size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
+                    Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
+                    NextAllocIdx++;
+                }
+                else if (NextFree)
+                {
+                    size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
+                    Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
+                    NextFreeIdx++;
+                }
+                else { ASSERT(false); }
+            }
+        }
+        Outf("\n");
+    }
+#endif // _DEBUG
 };
 
 struct MemoryImpl

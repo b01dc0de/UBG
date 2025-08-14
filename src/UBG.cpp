@@ -1,29 +1,23 @@
 #include "UBG.h"
 
-constexpr int DefaultWindowWidth = 1280;
-constexpr int DefaultWindowHeight = 720;
-
-bool GlobalState::bRunning = {};
-int GlobalState::Width = DefaultWindowWidth;
-int GlobalState::Height = DefaultWindowHeight;
-
-bool UBG_Init()
-{
-    Memory::Init();
-
-    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Init();
-    ClockT::Init();
-    return bResult;
-}
-
-void UBG_GameLoop()
+void UBG_Engine::GameLoop()
 {
     ClockT::Tick();
     UBG_PlatformT::Tick();
     UBG_GfxT::Draw();
 }
 
-bool UBG_Term()
+bool UBG_Engine::Init()
+{
+    Memory::Init();
+
+    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Init();
+    ClockT::Init();
+
+    return bResult;
+}
+
+bool UBG_Engine::Term()
 {
     bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Term();
 
@@ -32,28 +26,33 @@ bool UBG_Term()
     return bResult;
 }
 
+UBG_Engine* GlobalEngine = nullptr;
+
+#define MAIN_ASSERT(Exp, Msg) if (!(Exp)) { Outf("[error][fatal]: %s\n", Msg); return -1; }
+
 int UBG_Main()
 {
-    bool bResult = UBG_Init();
+    UBG_Engine Engine = {};
+    GlobalEngine = &Engine;
+    bool bResult = Engine.Init();
 
-    if (!bResult)
+    MAIN_ASSERT(bResult, "Platform initialization failed");
+
+    Engine.Instance = new UBGame{};
+    Engine.Instance->Init();
+
+    Engine.bRunning = true;
+    while (Engine.bRunning)
     {
-        Outf("[error] Platform initialization failed!\n");
-        return -1;
+        Engine.GameLoop();
     }
 
-    GlobalState::bRunning = true;
-    while (GlobalState::bRunning)
-    {
-        UBG_GameLoop();
-    }
+    Engine.Instance->Term();
+    delete Engine.Instance;
+    Engine.Instance = nullptr;
 
-    bResult &= UBG_Term();
-    if (!bResult)
-    {
-        Outf("[error] Platform termination failed!\n");
-        return -1;
-    }
+    bResult &= Engine.Term();
+    MAIN_ASSERT(bResult, "Platform termination failed");
 
     return bResult ? 0 : -1;
 }

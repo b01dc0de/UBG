@@ -1,22 +1,24 @@
 #include "UBG.h" // Includes UBGame.h
 
-void UBGame::Init()
+bool UBGame::Init()
 {
-
+    // TODO:
+    return true;
 }
 
-void UBGame::Term()
+bool UBGame::Term()
 {
-
+    // TODO:
+    return true;
 }
 
 void UBGame::Update()
 {
-
+    // TODO:
 }
 
 void UBGame::Draw()
 {
-
+    // TODO:
 }
 

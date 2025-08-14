@@ -117,7 +117,7 @@ struct GfxImpl
     static Camera CameraO;
 
     static RenderEntitySystem RE_System;
-    static RenderEntityID RE_ColorTriangle;
+    static RenderEntityID RE_TriangleColor;
     static RenderEntityID RE_QuadTexture;
     static RenderEntityID RE_QuadUnicolor;
 
@@ -145,7 +145,7 @@ MeshStateT GfxImpl::MeshQuadMin = {};
 Camera GfxImpl::CameraO = {};
 
 RenderEntitySystem GfxImpl::RE_System = {0};
-RenderEntityID GfxImpl::RE_ColorTriangle = {};
+RenderEntityID GfxImpl::RE_TriangleColor = {};
 RenderEntityID GfxImpl::RE_QuadTexture = {};
 RenderEntityID GfxImpl::RE_QuadUnicolor = {};
 
@@ -320,8 +320,8 @@ void GfxImpl::Draw(ID3D11DeviceContext* Context)
 
 void GfxImpl::DrawDemo(ID3D11DeviceContext* Context)
 {
-    float HalfWidth = GlobalState::Width * 0.5f;
-    float HalfHeight = GlobalState::Height * 0.5f;
+    float HalfWidth = GlobalEngine->Width * 0.5f;
+    float HalfHeight = GlobalEngine->Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
     Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (u32)sizeof(m4f), 0);
     Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (u32)sizeof(CameraO), 0);
@@ -556,21 +556,21 @@ bool GfxImpl::Init(ID3D11Device* Device)
     }
 
     // TODO: Why is Depth passed as -2?
-    CameraO.Ortho((float)GlobalState::Width, (float)GlobalState::Height, -2.0f);
+    CameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
 
     RE_System.Init();
-    RE_ColorTriangle = RE_System.Create();
+    RE_TriangleColor = RE_System.Create();
     RE_QuadTexture = RE_System.Create();
     RE_QuadUnicolor = RE_System.Create();
 
-    RenderEntity* ColorTriangleData = RE_System.Get(RE_ColorTriangle);
+    RenderEntity* ColorTriangleData = RE_System.Get(RE_TriangleColor);
     RenderEntity* QuadTextureData = RE_System.Get(RE_QuadTexture);
     RenderEntity* QuadUnicolorData = RE_System.Get(RE_QuadUnicolor);
     ASSERT(ColorTriangleData);
     ASSERT(QuadTextureData);
     ASSERT(QuadUnicolorData);
-    float HalfWidth = GlobalState::Width * 0.5f;
-    float HalfHeight = GlobalState::Height * 0.5f;
+    float HalfWidth = GlobalEngine->Width * 0.5f;
+    float HalfHeight = GlobalEngine->Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
     if (ColorTriangleData)
     {
@@ -676,8 +676,8 @@ bool UBG_Gfx_DX11::Init()
     }
 
     DXGI_SWAP_CHAIN_DESC1 SwapChainDesc1 = {};
-    SwapChainDesc1.Width = GlobalState::Width;
-    SwapChainDesc1.Height = GlobalState::Height;
+    SwapChainDesc1.Width = GlobalEngine->Width;
+    SwapChainDesc1.Height = GlobalEngine->Height;
     SwapChainDesc1.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     SwapChainDesc1.Stereo = FALSE;
     SwapChainDesc1.SampleDesc = { 1, 0 };
@@ -706,8 +706,8 @@ bool UBG_Gfx_DX11::Init()
     (void)Device->CreateRenderTargetView(BackBuffer, nullptr, &RenderTargetView);
 
     D3D11_TEXTURE2D_DESC DepthDesc = {};
-    DepthDesc.Width = GlobalState::Width;
-    DepthDesc.Height = GlobalState::Height;
+    DepthDesc.Width = GlobalEngine->Width;
+    DepthDesc.Height = GlobalEngine->Height;
     DepthDesc.MipLevels = 1;
     DepthDesc.ArraySize = 1;
     DepthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -737,8 +737,8 @@ bool UBG_Gfx_DX11::Init()
     D3D11_VIEWPORT ViewportDesc = {};
     ViewportDesc.TopLeftX = 0.0f;
     ViewportDesc.TopLeftY = 0.0f;
-    ViewportDesc.Width = (FLOAT)GlobalState::Width;
-    ViewportDesc.Height = (FLOAT)GlobalState::Height;
+    ViewportDesc.Width = (FLOAT)GlobalEngine->Width;
+    ViewportDesc.Height = (FLOAT)GlobalEngine->Height;
     ViewportDesc.MinDepth = 0.0f;
     ViewportDesc.MaxDepth = 1.0f;
     Context->RSSetViewports(1, &ViewportDesc);

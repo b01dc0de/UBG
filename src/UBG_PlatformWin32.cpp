@@ -79,7 +79,6 @@ void HandleMouseInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-
 // TODO: Move this static var
 static WINDOWPLACEMENT WindowPlacement = { sizeof(WindowPlacement) };
 void ToggleFullscreen(HWND Window)
@@ -126,7 +125,7 @@ LRESULT WndProc_Win32(HWND hWnd, u32 uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (uMsg == WM_KEYUP && wParam == VK_ESCAPE)
             {
-                GlobalState::bRunning = false;
+                GlobalEngine->bRunning = false;
             }
             else if (uMsg == WM_KEYUP && wParam == VK_F11)
             {
@@ -150,7 +149,7 @@ LRESULT WndProc_Win32(HWND hWnd, u32 uMsg, WPARAM wParam, LPARAM lParam)
         case WM_DESTROY:
         case WM_QUIT:
         {
-            GlobalState::bRunning = false;
+            GlobalEngine->bRunning = false;
         } break;
         default:
         {
@@ -163,7 +162,7 @@ LRESULT WndProc_Win32(HWND hWnd, u32 uMsg, WPARAM wParam, LPARAM lParam)
 
 void UBG_Platform_Win32::Tick()
 {
-    if (GlobalState::bRunning)
+    if (GlobalEngine->bRunning)
     {
         MSG Msg = {};
         while (PeekMessageA(&Msg, hWindow, 0, 0, TRUE))
@@ -211,8 +210,8 @@ bool UBG_Platform_Win32::Init()
     // Get Width/Height info from whichever monitor hWindow is on
     MONITORINFO MonitorInfo = { sizeof(MonitorInfo) };
     GetMonitorInfoA(MonitorFromWindow(hWindow, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo);
-    GlobalState::Width = MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left;
-    GlobalState::Height = MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top;
+    GlobalEngine->Width = MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left;
+    GlobalEngine->Height = MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top;
 
     ToggleFullscreen(hWindow);
 
