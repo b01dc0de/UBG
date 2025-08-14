@@ -50,6 +50,14 @@ struct MemPool
     {
         ASSERT(DataSize && DataPool);
 
+        #if _DEBUG
+        if (bDebugPrint)
+        {
+            Outf("[memory][debug] Terminating...\n");
+            DebugPrint();
+        }
+        #endif // _DEBUG
+
         DataSize = 0;
         free(DataPool);
         DataPool = nullptr;
@@ -232,7 +240,7 @@ struct MemPool
             // Case 5: NewFree will be inserted/coalesced somewhere in the middle
             else
             {
-                for (int Idx = 1; (Idx + 1) < NumFree; Idx++)
+                for (int Idx = 0; (Idx + 1) < NumFree; Idx++)
                 {
                     u8* BeforeBlockEnd = (u8*)FreeBlocks[Idx].GetBlockEnd();
                     u8* NextBlockBegin = (Idx + 1) < NumFree ? (u8*)FreeBlocks[Idx + 1].Data : nullptr;
