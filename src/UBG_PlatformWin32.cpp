@@ -1,4 +1,4 @@
-#include "UBG.h"
+#include "UBG.h" // E UBG_Platform.h E UBG_PlatformWin32.h
 
 void Outf(const char* Fmt, ...)
 {

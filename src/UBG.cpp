@@ -28,10 +28,10 @@ bool UBG_Engine::Term()
 
 UBG_Engine* GlobalEngine = nullptr;
 
-#define MAIN_ASSERT(Exp, Msg) if (!(Exp)) { Outf("[error][fatal]: %s\n", Msg); return -1; }
-
 int UBG_Main()
 {
+#define MAIN_ASSERT(Exp, Msg) if (!(Exp)) { Outf("[error][fatal]: %s\n", Msg); return -1; }
+
     UBG_Engine Engine = {};
     GlobalEngine = &Engine;
     bool bResult = Engine.Init();
@@ -53,6 +53,7 @@ int UBG_Main()
 
     bResult &= Engine.Term();
     MAIN_ASSERT(bResult, "Platform termination failed");
+    GlobalEngine = nullptr;
 
     return bResult ? 0 : -1;
 }

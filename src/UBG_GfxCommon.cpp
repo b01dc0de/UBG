@@ -1,4 +1,4 @@
-#include "UBG.h" // UBG.h E UBG.Gfx.h E UBG_GfxCommon.h
+#include "UBG.h" // E UBG.Gfx.h E UBG_GfxCommon.h
 
 void Camera::Ortho(float ResX, float ResY, float fDepth)
 {

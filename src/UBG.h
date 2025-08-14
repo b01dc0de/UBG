@@ -10,13 +10,12 @@ extern void DebugBreakpoint();
 #define ARRAY_SIZE(Array) (sizeof((Array)) / sizeof((Array)[0]))
 
 // Engine definition
-struct UBGame;
 struct UBG_Engine
 {
     bool bRunning;
     int Width;
     int Height;
-    UBGame* Instance;
+    struct UBGame* Instance;
 
     void GameLoop();
     bool Init();

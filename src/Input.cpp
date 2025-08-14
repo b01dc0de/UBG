@@ -1,4 +1,4 @@
-#include "UBG.h" // UBG.h includes Input.h
+#include "UBG.h" // Includes Input.h
 
 int KeyboardState::KeysPressed[] = { };
 

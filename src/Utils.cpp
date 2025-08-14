@@ -2,12 +2,12 @@
 
 #include <random>
 
-FileContentsT LoadFileContents(const char* Filename, bool bNullTerm)
+void FileContentsT::Load(const char* FileName, bool bNullTerm)
 {
-    FileContentsT Result = {};
+    Release();
 
     FILE* FileHandle = nullptr;
-    fopen_s(&FileHandle, Filename, "rb");
+    fopen_s(&FileHandle, FileName, "rb");
     if (FileHandle)
     {
         fseek(FileHandle, 0, SEEK_END);
@@ -28,14 +28,21 @@ FileContentsT LoadFileContents(const char* Filename, bool bNullTerm)
             fread_s(Buffer, FileSize, FileSize, 1, FileHandle);
         }
 
-
-        Result.Size = FileSize;
-        Result.Contents = Buffer;
+        Size = FileSize;
+        Contents = Buffer;
 
         fclose(FileHandle);
     }
+}
 
-    return Result;
+void FileContentsT::Release()
+{
+    if (Contents)
+    {
+        delete[] Contents;
+    }
+    Size = 0;
+    Contents = nullptr;
 }
 
 void GetDebugImage(ImageT& OutImage)
@@ -98,7 +105,8 @@ struct BMPHeader
 
 void LoadBMPFile(const char* Filename, ImageT& OutImage)
 {
-    FileContentsT LoadedFile = LoadFileContents(Filename);
+    FileContentsT LoadedFile = {};
+    LoadedFile.Load(Filename);
     if (LoadedFile.Size && LoadedFile.Contents)
     {
         u8* FileReadPtr = LoadedFile.Contents;

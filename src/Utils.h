@@ -3,11 +3,12 @@
 
 struct FileContentsT
 {
-    size_t Size = 0;
-    u8* Contents = nullptr;
-};
+    size_t Size;
+    u8* Contents;
 
-FileContentsT LoadFileContents(const char* FileName, bool bNullTerm = false);
+    void Load(const char* FileName, bool bNullTerm = false);
+    void Release();
+};
 
 struct RGBA32
 {

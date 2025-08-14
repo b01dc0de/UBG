@@ -1,4 +1,4 @@
-#include "UBG.h"
+#include "UBG.h" // E UBG_Gfx.h E UBG_GfxDX11.h
 
 // NOTE: This include lib format is supported only via MSVC, keep in mind if we want to support other compilers on Windows
 #pragma comment(lib, "D3D11.lib")
@@ -153,7 +153,8 @@ v4f GetRandomColorDim();
 void GetClearColor(v4f& OutClearColor);
 int CompileShaderHLSL
 (
-    const wchar_t* SourceFileName,
+    FileContentsT* FileHLSL,
+    const char* SourceFileName,
     LPCSTR EntryPointFunction,
     LPCSTR ShaderProfile,
     ID3DBlob** OutShaderBlob,
@@ -162,7 +163,7 @@ int CompileShaderHLSL
 DrawStateT CreateDrawState
 (
     ID3D11Device* Device,
-    const wchar_t* ShaderFileName,
+    const char* ShaderFileName,
     const D3D_SHADER_MACRO* Defines,
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
     size_t NumInputElements,
@@ -196,7 +197,7 @@ void RenderEntitySystem::Term()
 
 RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
 {
-    // TODO: Actually make this a fast ID lookup, not just searching through
+    // TODO: Actually make this a fast ID lookup, instead of a linear search
     RenderEntity* Result = nullptr;
     for (size_t Idx = 0; Idx < Entities.Num; Idx++)
     {
@@ -238,6 +239,7 @@ void RenderEntitySystem::DrawAll(ID3D11DeviceContext* Context)
 {
     Context->UpdateSubresource(GfxImpl::ViewProjBuffer, 0, nullptr, &GfxImpl::CameraO, (u32)sizeof(GfxImpl::CameraO), 0);
 
+    // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
     for (size_t Idx = 0; Idx < Entities.Num; Idx++)
     {
         if (Entities[Idx].bVisible)
@@ -423,7 +425,7 @@ bool GfxImpl::Init(ID3D11Device* Device)
         DrawColor = CreateDrawState
         (
             Device,
-            L"src/hlsl/BaseShaderColor.hlsl",
+            "src/hlsl/BaseShaderColor.hlsl",
             DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements),
@@ -444,7 +446,7 @@ bool GfxImpl::Init(ID3D11Device* Device)
         DrawTexture = CreateDrawState
         (
             Device,
-            L"src/hlsl/BaseShaderTexture.hlsl",
+            "src/hlsl/BaseShaderTexture.hlsl",
             DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements),
@@ -473,7 +475,7 @@ bool GfxImpl::Init(ID3D11Device* Device)
         DrawUnicolor = CreateDrawState
         (
             Device,
-            L"src/hlsl/BaseShaderUnicolor.hlsl",
+            "src/hlsl/BaseShaderUnicolor.hlsl",
             DefaultDefines,
             InputElements,
             ARRAY_SIZE(InputElements),
@@ -855,14 +857,21 @@ void GetClearColor(v4f& OutClearColor)
 
 int CompileShaderHLSL
 (
-    const wchar_t* SourceFileName,
+    FileContentsT* FileHLSL,
+    const char* SourceFileName,
     LPCSTR EntryPointFunction,
     LPCSTR ShaderProfile,
     ID3DBlob** OutShaderBlob,
     const D3D_SHADER_MACRO* Defines
 )
 {
-    if (SourceFileName == nullptr || EntryPointFunction == nullptr || ShaderProfile == nullptr || OutShaderBlob == nullptr)
+    if (FileHLSL == nullptr ||
+        FileHLSL->Size == 0 ||
+        FileHLSL->Contents == nullptr ||
+        SourceFileName == nullptr ||
+        EntryPointFunction == nullptr ||
+        ShaderProfile == nullptr ||
+        OutShaderBlob == nullptr)
     {
         return E_INVALIDARG;
     }
@@ -878,16 +887,19 @@ int CompileShaderHLSL
     ID3DBlob* ShaderBlob = nullptr;
     ID3DBlob* ErrorBlob = nullptr;
 
-    // TODO: Switch to using D3DCompile2(...) instead of D3DCompileFromFile
-    Result = D3DCompileFromFile
-    (
+    Result = D3DCompile2(
+        FileHLSL->Contents,
+        FileHLSL->Size,
         SourceFileName,
         Defines,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
         EntryPointFunction,
         ShaderProfile,
         ShaderCompileFlags,
-        0,
+        0, // UINT Flags2
+        0, // UINT SecondaryDataFlags
+        nullptr, // LPCVOID pSecondaryData
+        0, // SIZE_T SecondaryDataSize
         &ShaderBlob,
         &ErrorBlob
     );
@@ -911,7 +923,7 @@ int CompileShaderHLSL
 DrawStateT CreateDrawState
 (
     ID3D11Device* Device,
-    const wchar_t* ShaderFileName,
+    const char* ShaderFileName,
     const D3D_SHADER_MACRO* Defines,
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
     size_t NumInputElements,
@@ -934,8 +946,15 @@ DrawStateT CreateDrawState
     static const char* VxShaderProfile = "vs_5_0";
     static const char* PxShaderMain = "PSMain";
     static const char* PxShaderProfile = "ps_5_0";
-    CompileShaderHLSL(ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
-    CompileShaderHLSL(ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
+
+    FileContentsT ShaderFile = {};
+    ShaderFile.Load(ShaderFileName);
+    ASSERT(ShaderFile.Size && ShaderFile.Contents);
+    if (ShaderFile.Size && ShaderFile.Contents)
+    {
+        CompileShaderHLSL(&ShaderFile, ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
+        CompileShaderHLSL(&ShaderFile, ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
+    }
 
     DrawStateT Result = {};
 
@@ -945,8 +964,6 @@ DrawStateT CreateDrawState
         Device->CreatePixelShader(PSBlob->GetBufferPointer(), PSBlob->GetBufferSize(), nullptr, &Result.PixelShader);
 
         Device->CreateInputLayout(InputElements, (u32)NumInputElements, VSBlob->GetBufferPointer(), VSBlob->GetBufferSize(), &Result.InputLayout);
-
-
     }
     SafeRelease(VSBlob);
     SafeRelease(PSBlob);

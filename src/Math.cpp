@@ -1,4 +1,4 @@
-#include "UBG.h" // UBG.h includes Math.h
+#include "UBG.h" // Includes Math.h
 
 m2f m2f::Identity()
 {

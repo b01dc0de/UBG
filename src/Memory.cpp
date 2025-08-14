@@ -1,4 +1,4 @@
-#include "UBG.h"
+#include "UBG.h" // Includes Memory.h
 
 struct MemBlock
 {
@@ -229,7 +229,7 @@ struct MemPool
                 NewFreeIdx = (int)NumFree;
                 FreeBlocks[NewFreeIdx] = NewFree;
             }
-            // Case 5: NewFree will be inserted between two other free blocks
+            // Case 5: NewFree will be inserted/coalesced somewhere in the middle
             else
             {
                 for (int Idx = 1; (Idx + 1) < NumFree; Idx++)
@@ -275,7 +275,7 @@ struct MemPool
                         break;
                     }
 
-                    // Case 4: NewFree is between two alloc blocks
+                    // Case 5.D: NewFree is between two alloc blocks
                     if (!bCoalesced &&
                         ((u8*)FreeBlocks[Idx].Data < (u8*)NewFree.Data) &&
                         ((u8*)NewFree.Data < (u8*)FreeBlocks[Idx + 1].Data))

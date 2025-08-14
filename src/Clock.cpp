@@ -1,4 +1,4 @@
-#include "UBG.h" // UBG.h includes Clock.h
+#include "UBG.h" // Includes Clock.h
 
 u64 ClockT::Freq = {};
 u64 ClockT::Epoch = {};
