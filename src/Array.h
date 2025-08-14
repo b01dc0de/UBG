@@ -1,28 +1,42 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
-template <typename T>
+/*
+    NOTE(Chris):
+        - SArray is like a traditional c-array, no knowledge of it's current 'Num', fixed-size
+        - DArray is a dynamic array, supports Add/Remove and can expand as needed
+*/
+
+template <typename T, size_t Capacity>
 struct SArray
 {
-    u32 Capacity;
     T* Data;
 
-    void Init(u32 _Capacity)
+    void Init()
     {
-        Capacity = _Capacity;
+        ASSERT(!Data);
         Data = new T[Capacity];
     }
+
     void Term()
     {
-        if (Data)
-        {
-            delete[] Data;
-            Data = nullptr;
-        }
+        ASSERT(Data);
+        delete[] Data;
     }
 
-    T& operator[](u32 Idx)
+    inline size_t Size()
     {
+        return Capacity;
+    }
+
+    T* operator*()
+    {
+        return Data;
+    }
+
+    T& operator[](size_t Idx)
+    {
+        ASSERT(Data);
         ASSERT(Idx < Capacity);
         return Data[Idx];
     }

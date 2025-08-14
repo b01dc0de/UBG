@@ -96,6 +96,7 @@
   <ItemGroup>
     <ClInclude Include="src\Array.h" />
     <ClInclude Include="src\Clock.h" />
+    <ClInclude Include="src\ListID.h" />
     <ClInclude Include="src\UBGame.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\Math.h" />

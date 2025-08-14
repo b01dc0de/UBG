@@ -67,6 +67,7 @@ struct m4f
 };
 
 #include "Array.h"
+#include "ListID.h"
 
 #endif // TYPES_H
 

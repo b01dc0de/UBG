@@ -27,6 +27,7 @@ struct UBG_Gfx_DX11
 };
 
 using UBG_GfxT = UBG_Gfx_DX11;
+using UBG_GfxContextT = ID3D11DeviceContext;
 
 struct MeshStateT
 {
@@ -36,8 +37,8 @@ struct MeshStateT
     ID3D11Buffer* VxBuffer;
     ID3D11Buffer* IxBuffer;
 
-    void Bind(ID3D11DeviceContext* Context);
-    void Draw(ID3D11DeviceContext* Context);
+    void Bind(UBG_GfxContextT* Context);
+    void Draw(UBG_GfxContextT* Context);
     void SafeRelease();
 };
 
@@ -78,8 +79,8 @@ struct RenderEntity
         DrawUnicolorState UnicolorState;
     };
 
-    void UpdateWorld(ID3D11DeviceContext* Context);
-    void Draw(ID3D11DeviceContext* Context);
+    void UpdateWorld(UBG_GfxContextT* Context);
+    void Draw(UBG_GfxContextT* Context);
 };
 
 struct RenderEntitySystem
@@ -93,7 +94,7 @@ struct RenderEntitySystem
     RenderEntity* Get(RenderEntityID ID);
     RenderEntityID Create();
     void Destroy(RenderEntityID ID);
-    void DrawAll(ID3D11DeviceContext* Context);
+    void DrawAll(UBG_GfxContextT* Context);
 };
 
 #endif // UBG_GFXDX11_H

@@ -83,6 +83,9 @@
     <ClInclude Include="src\UBGame.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\ListID.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="src\hlsl\BaseShaderColor.hlsl">

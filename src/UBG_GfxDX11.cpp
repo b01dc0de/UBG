@@ -39,7 +39,7 @@ struct DrawStateT
     ID3D11ShaderResourceView* ShaderRVs[MaxShaderRVs];
     ID3D11SamplerState* Samplers[MaxSamplers];
 
-    void Bind(ID3D11DeviceContext* Context)
+    void Bind(UBG_GfxContextT* Context)
     {
         Context->IASetInputLayout(InputLayout);
         Context->VSSetShader(VertexShader, nullptr, 0);
@@ -70,7 +70,7 @@ struct DrawStateT
     }
 };
 
-void MeshStateT::Bind(ID3D11DeviceContext* Context)
+void MeshStateT::Bind(UBG_GfxContextT* Context)
 {
     u32 VxStride = (u32)VertexSize;
     u32 VxOffset = 0u;
@@ -79,7 +79,7 @@ void MeshStateT::Bind(ID3D11DeviceContext* Context)
     Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-void MeshStateT::Draw(ID3D11DeviceContext* Context)
+void MeshStateT::Draw(UBG_GfxContextT* Context)
 {
     if (IxBuffer)
     {
@@ -121,9 +121,9 @@ struct GfxImpl
     static RenderEntityID RE_QuadTexture;
     static RenderEntityID RE_QuadUnicolor;
 
-    static void Draw(ID3D11DeviceContext* Context);
-    static void DrawDemo(ID3D11DeviceContext* Context);
-    static void DrawGame(ID3D11DeviceContext* Context);
+    static void Draw(UBG_GfxContextT* Context);
+    static void DrawDemo(UBG_GfxContextT* Context);
+    static void DrawGame(UBG_GfxContextT* Context);
     static bool Init(ID3D11Device* Device);
     static bool Term();
 };
@@ -235,7 +235,7 @@ void RenderEntitySystem::Destroy(RenderEntityID ID)
     }
 }
 
-void RenderEntitySystem::DrawAll(ID3D11DeviceContext* Context)
+void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context)
 {
     Context->UpdateSubresource(GfxImpl::ViewProjBuffer, 0, nullptr, &GfxImpl::CameraO, (u32)sizeof(GfxImpl::CameraO), 0);
 
@@ -249,12 +249,12 @@ void RenderEntitySystem::DrawAll(ID3D11DeviceContext* Context)
     }
 }
 
-void RenderEntity::UpdateWorld(ID3D11DeviceContext* Context)
+void RenderEntity::UpdateWorld(UBG_GfxContextT* Context)
 {
     Context->UpdateSubresource(GfxImpl::WorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
 }
 
-void RenderEntity::Draw(ID3D11DeviceContext* Context)
+void RenderEntity::Draw(UBG_GfxContextT* Context)
 {
     ASSERT(bVisible);
 
@@ -271,6 +271,12 @@ void RenderEntity::Draw(ID3D11DeviceContext* Context)
         {
             UpdateWorld(Context);
             Mesh->Bind(Context);
+            // TODO(Chris): This is awful as-is.
+            //              We need to distinguish between
+            //              - Universal state needed for a draw call
+            //              - State thats expected to be different for each entity
+            //              We should also probably be able to tell what a draw call requires to be bound
+            //                  so that we can check we actually have that set before drawing
             //GfxImpl::DrawTexture.Bind(Context);
             {
                 Context->IASetInputLayout(GfxImpl::DrawTexture.InputLayout);
@@ -306,7 +312,7 @@ void RenderEntity::Draw(ID3D11DeviceContext* Context)
 }
 
 
-void GfxImpl::Draw(ID3D11DeviceContext* Context)
+void GfxImpl::Draw(UBG_GfxContextT* Context)
 {
     constexpr bool bDrawDemo = false;
 
@@ -320,7 +326,7 @@ void GfxImpl::Draw(ID3D11DeviceContext* Context)
     }
 }
 
-void GfxImpl::DrawDemo(ID3D11DeviceContext* Context)
+void GfxImpl::DrawDemo(UBG_GfxContextT* Context)
 {
     float HalfWidth = GlobalEngine->Width * 0.5f;
     float HalfHeight = GlobalEngine->Height * 0.5f;
@@ -356,7 +362,7 @@ void GfxImpl::DrawDemo(ID3D11DeviceContext* Context)
     }
 }
 
-void GfxImpl::DrawGame(ID3D11DeviceContext* Context)
+void GfxImpl::DrawGame(UBG_GfxContextT* Context)
 {
     RE_System.DrawAll(Context);
 }
@@ -762,6 +768,8 @@ bool UBG_Gfx_DX11::Init()
 
 bool UBG_Gfx_DX11::Term()
 {
+    bool bResult = GfxImpl::Term();
+
     SafeRelease(DepthStencil);
     SafeRelease(DepthStencilView);
 
@@ -783,7 +791,7 @@ bool UBG_Gfx_DX11::Term()
 #endif // _DEBUG
     SafeRelease(Device);
 
-    return true;
+    return bResult;
 }
 
 v4f GetRandomColorDim()
@@ -954,6 +962,7 @@ DrawStateT CreateDrawState
     {
         CompileShaderHLSL(&ShaderFile, ShaderFileName, VxShaderMain, VxShaderProfile, &VSBlob, Defines);
         CompileShaderHLSL(&ShaderFile, ShaderFileName, PxShaderMain, PxShaderProfile, &PSBlob, Defines);
+        ShaderFile.Release();
     }
 
     DrawStateT Result = {};
