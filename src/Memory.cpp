@@ -54,7 +54,7 @@ struct MemPool
         if (bDebugPrint)
         {
             Outf("[memory][debug] Terminating...\n");
-            DebugPrint();
+            DebugPrint(true);
         }
         #endif // _DEBUG
 
@@ -315,7 +315,7 @@ struct MemPool
     }
 
 #if _DEBUG
-    void DebugPrint()
+    void DebugPrint(bool bPrintList = false)
     {
         double PercentAlloc = ((double)TotalAllocSize / (double)DataSize) * 100.0;
         double PercentFree = ((double)TotalFreeSize / (double)DataSize) * 100.0;
@@ -324,42 +324,46 @@ struct MemPool
         size_t NextAllocIdx = 0;
         size_t NextFreeIdx = 0;
         size_t NumTotalBlocks = NumAlloc + NumFree;
-        for (size_t BlockIdx = 0; BlockIdx < NumTotalBlocks; BlockIdx++)
-        {
-            void* NextAlloc = NextAllocIdx < NumAlloc ? AllocBlocks[NextAllocIdx].Data : nullptr;
-            void* NextFree = NextFreeIdx < NumFree ? FreeBlocks[NextFreeIdx].Data : nullptr;
 
-            if (NextAlloc && NextFree)
+        if (bPrintList)
+        {
+            for (size_t BlockIdx = 0; BlockIdx < NumTotalBlocks; BlockIdx++)
             {
-                if (NextAlloc < NextFree)
+                void* NextAlloc = NextAllocIdx < NumAlloc ? AllocBlocks[NextAllocIdx].Data : nullptr;
+                void* NextFree = NextFreeIdx < NumFree ? FreeBlocks[NextFreeIdx].Data : nullptr;
+
+                if (NextAlloc && NextFree)
                 {
-                    size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
-                    Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
-                    NextAllocIdx++;
+                    if (NextAlloc < NextFree)
+                    {
+                        size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
+                        Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
+                        NextAllocIdx++;
+                    }
+                    else if (NextFree < NextAlloc)
+                    {
+                        size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
+                        Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
+                        NextFreeIdx++;
+                    }
+                    else { ASSERT(false); }
                 }
-                else if (NextFree < NextAlloc)
+                else
                 {
-                    size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
-                    Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
-                    NextFreeIdx++;
+                    if (NextAlloc)
+                    {
+                        size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
+                        Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
+                        NextAllocIdx++;
+                    }
+                    else if (NextFree)
+                    {
+                        size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
+                        Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
+                        NextFreeIdx++;
+                    }
+                    else { ASSERT(false); }
                 }
-                else { ASSERT(false); }
-            }
-            else
-            {
-                if (NextAlloc)
-                {
-                    size_t BlockOffset = (u8*)AllocBlocks[NextAllocIdx].Data - (u8*)DataPool;
-                    Outf("\t Alloc[%d] : Size: %llu -> 0x%X\n", NextAllocIdx, AllocBlocks[NextAllocIdx].Size, BlockOffset);
-                    NextAllocIdx++;
-                }
-                else if (NextFree)
-                {
-                    size_t BlockOffset = (u8*)FreeBlocks[NextFreeIdx].Data - (u8*)DataPool;
-                    Outf("\t Free[%d] : Size: %llu -> 0x%X\n", NextFreeIdx, FreeBlocks[NextFreeIdx].Size, BlockOffset);
-                    NextFreeIdx++;
-                }
-                else { ASSERT(false); }
             }
         }
         Outf("\n");

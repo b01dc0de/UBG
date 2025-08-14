@@ -5,16 +5,6 @@
 #pragma comment(lib, "D3DCompiler.lib")
 #pragma comment(lib, "DXGI.lib")
 
-ID3D11Device* UBG_Gfx_DX11::Device = {};
-ID3D11DeviceContext* UBG_Gfx_DX11::Context = {};
-D3D_FEATURE_LEVEL UBG_Gfx_DX11::FeatureLevel = {};
-IDXGISwapChain1* UBG_Gfx_DX11::SwapChain = {};
-ID3D11Texture2D* UBG_Gfx_DX11::BackBuffer = {};
-ID3D11RenderTargetView* UBG_Gfx_DX11::RenderTargetView = {};
-ID3D11RasterizerState* UBG_Gfx_DX11::RasterState = {};
-ID3D11Texture2D* UBG_Gfx_DX11::DepthStencil = {};
-ID3D11DepthStencilView* UBG_Gfx_DX11::DepthStencilView = {};
-
 void SafeRelease(IUnknown* Ptr)
 {
     if (Ptr)
@@ -23,52 +13,51 @@ void SafeRelease(IUnknown* Ptr)
     }
 }
 
-struct DrawStateT
+void DrawStateT::Bind(UBG_GfxContextT* Context, GfxSystem* System)
 {
-    ID3D11InputLayout* InputLayout;
-    ID3D11VertexShader* VertexShader;
-    ID3D11PixelShader* PixelShader;
+    Bind(Context, System, 0, nullptr, 0, nullptr);
+}
 
-    static constexpr u32 MaxConstantBuffers = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
-    static constexpr u32 MaxShaderRVs = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
-    static constexpr u32 MaxSamplers = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
-    u32 NumConstantBuffers;
-    u32 NumShaderRVs;
-    u32 NumSamplers;
-    ID3D11Buffer* ConstantBuffers[MaxConstantBuffers];
-    ID3D11ShaderResourceView* ShaderRVs[MaxShaderRVs];
-    ID3D11SamplerState* Samplers[MaxSamplers];
+void DrawStateT::Bind(UBG_GfxContextT* Context, GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers)
+{
+    Context->IASetInputLayout(InputLayout);
+    Context->VSSetShader(VertexShader, nullptr, 0);
+    Context->PSSetShader(PixelShader, nullptr, 0);
 
-    void Bind(UBG_GfxContextT* Context)
+    if (NumConstantBuffers)
     {
-        Context->IASetInputLayout(InputLayout);
-        Context->VSSetShader(VertexShader, nullptr, 0);
-        Context->PSSetShader(PixelShader, nullptr, 0);
-
-        if (NumConstantBuffers)
+        ShaderBufferT ShaderBuffers[MaxConstantBuffers] = {};
+        for (size_t Idx = 0; Idx < NumConstantBuffers; Idx++)
         {
-            Context->VSSetConstantBuffers(0, NumConstantBuffers, ConstantBuffers);
-            Context->PSSetConstantBuffers(0, NumConstantBuffers, ConstantBuffers);
+            ShaderBufferT* pBuffer = System->ShaderBuffers.Get(idsConstantBuffers[Idx]);
+            ASSERT(pBuffer);
+            ShaderBuffers[Idx] = *pBuffer;
         }
-        if (NumShaderRVs)
-        {
-            Context->VSSetShaderResources(0, NumShaderRVs, ShaderRVs);
-            Context->PSSetShaderResources(0, NumShaderRVs, ShaderRVs);
-        }
-        if (NumSamplers)
-        {
-            Context->VSSetSamplers(0, NumSamplers, Samplers);
-            Context->PSSetSamplers(0, NumSamplers, Samplers);
-        }
+        Context->VSSetConstantBuffers(0, NumConstantBuffers, ShaderBuffers);
+        Context->PSSetConstantBuffers(0, NumConstantBuffers, ShaderBuffers);
     }
 
-    void SafeRelease()
+    ASSERT(NumShaderRVs == InNumShaderRVs && (InNumShaderRVs || !ShaderRVs));
+    if (InNumShaderRVs)
     {
-        ::SafeRelease(InputLayout);
-        ::SafeRelease(VertexShader);
-        ::SafeRelease(PixelShader);
+        Context->VSSetShaderResources(0, NumShaderRVs, ShaderRVs);
+        Context->PSSetShaderResources(0, NumShaderRVs, ShaderRVs);
     }
-};
+
+    ASSERT(NumSamplers == InNumSamplers && (NumSamplers || !Samplers));
+    if (InNumSamplers)
+    {
+        Context->VSSetSamplers(0, NumSamplers, Samplers);
+        Context->PSSetSamplers(0, NumSamplers, Samplers);
+    }
+}
+
+void DrawStateT::SafeRelease()
+{
+    ::SafeRelease(InputLayout);
+    ::SafeRelease(VertexShader);
+    ::SafeRelease(PixelShader);
+}
 
 void MeshStateT::Bind(UBG_GfxContextT* Context)
 {
@@ -97,58 +86,6 @@ void MeshStateT::SafeRelease()
     ::SafeRelease(IxBuffer);
 }
 
-struct GfxImpl
-{
-    static ID3D11Texture2D* DefaultTexture;
-    static ID3D11ShaderResourceView* DefaultTextureSRV;
-    static ID3D11SamplerState* DefaultSamplerState;
-    static ID3D11Buffer* WorldBuffer;
-    static ID3D11Buffer* ViewProjBuffer;
-
-    static DrawStateT DrawColor;
-    static DrawStateT DrawTexture;
-    static DrawStateT DrawUnicolor;
-    static ID3D11Buffer* UnicolorBuffer;
-
-    static MeshStateT MeshTriangle;
-    static MeshStateT MeshQuad;
-    static MeshStateT MeshQuadMin;
-
-    static Camera CameraO;
-
-    static RenderEntitySystem RE_System;
-    static RenderEntityID RE_TriangleColor;
-    static RenderEntityID RE_QuadTexture;
-    static RenderEntityID RE_QuadUnicolor;
-
-    static void Draw(UBG_GfxContextT* Context);
-    static void DrawDemo(UBG_GfxContextT* Context);
-    static void DrawGame(UBG_GfxContextT* Context);
-    static bool Init(ID3D11Device* Device);
-    static bool Term();
-};
-
-ID3D11Texture2D* GfxImpl::DefaultTexture = {};
-ID3D11ShaderResourceView* GfxImpl::DefaultTextureSRV = {};
-ID3D11SamplerState* GfxImpl::DefaultSamplerState = {};
-ID3D11Buffer* GfxImpl::WorldBuffer = {};
-ID3D11Buffer* GfxImpl::ViewProjBuffer = {};
-
-DrawStateT GfxImpl::DrawColor = {};
-DrawStateT GfxImpl::DrawTexture = {};
-DrawStateT GfxImpl::DrawUnicolor = {};
-ID3D11Buffer* GfxImpl::UnicolorBuffer = {};
-MeshStateT GfxImpl::MeshTriangle = {};
-MeshStateT GfxImpl::MeshQuad = {};
-MeshStateT GfxImpl::MeshQuadMin = {};
-
-Camera GfxImpl::CameraO = {};
-
-RenderEntitySystem GfxImpl::RE_System = {0};
-RenderEntityID GfxImpl::RE_TriangleColor = {};
-RenderEntityID GfxImpl::RE_QuadTexture = {};
-RenderEntityID GfxImpl::RE_QuadUnicolor = {};
-
 v4f GetRandomColorDim();
 void GetClearColor(v4f& OutClearColor);
 int CompileShaderHLSL
@@ -168,11 +105,9 @@ DrawStateT CreateDrawState
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
     size_t NumInputElements,
     u32 NumConstantBuffers,
-    ID3D11Buffer** ConstantBuffers,
+    ShaderBufferID** idsConstantBuffers,
     u32 NumShaderRVs,
-    ID3D11ShaderResourceView** ShaderRVs,
-    u32 NumSamplers,
-    ID3D11SamplerState** Samplers
+    u32 NumSamplers
 );
 MeshStateT CreateMeshState
 (
@@ -186,6 +121,7 @@ MeshStateT CreateMeshState
 
 void RenderEntitySystem::Init()
 {
+    Entities = {};
     Entities.Init();
 }
 
@@ -201,7 +137,12 @@ RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
 
 RenderEntityID RenderEntitySystem::Create()
 {
-    return Entities.Create();
+    return Entities.Create({});
+}
+
+RenderEntityID RenderEntitySystem::Create(RenderEntity InitData)
+{
+    return Entities.Create(InitData);
 }
 
 void RenderEntitySystem::Destroy(RenderEntityID ID)
@@ -209,402 +150,79 @@ void RenderEntitySystem::Destroy(RenderEntityID ID)
     Entities.Destroy(ID);
 }
 
-void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context)
+void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context, GfxSystem* System)
 {
-    Context->UpdateSubresource(GfxImpl::ViewProjBuffer, 0, nullptr, &GfxImpl::CameraO, (u32)sizeof(GfxImpl::CameraO), 0);
+    ASSERT(System);
+    ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
+    ASSERT(pViewProjBuffer);
+    Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
 
     // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
     for (size_t Idx = 0; Idx < Entities.NumActive; Idx++)
     {
         if (Entities.ActiveList[Idx].bVisible)
         {
-            Entities.ActiveList[Idx].Draw(Context);
+            Entities.ActiveList[Idx].Draw(Context, System);
         }
     }
 }
 
-void RenderEntity::UpdateWorld(UBG_GfxContextT* Context)
+void RenderEntity::UpdateWorld(UBG_GfxContextT* Context, GfxSystem* System)
 {
-    Context->UpdateSubresource(GfxImpl::WorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
+    ASSERT(System);
+    ShaderBufferT* pWorldBuffer = System->ShaderBuffers.Get(System->idWorldBuffer);
+    ASSERT(pWorldBuffer);
+    Context->UpdateSubresource(*pWorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
 }
 
-void RenderEntity::Draw(UBG_GfxContextT* Context)
+void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
 {
     ASSERT(bVisible);
+
+    MeshStateT* pMesh = System->Meshes.Get(idMesh);
+    ASSERT(pMesh);
 
     switch (Type)
     {
         case DrawType::Color:
         {
-            UpdateWorld(Context);
-            Mesh->Bind(Context);
-            GfxImpl::DrawColor.Bind(Context);
-            Mesh->Draw(Context);
+            UpdateWorld(Context, System);
+            pMesh->Bind(Context);
+            DrawStateT* pDrawColor = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Color]);
+            ASSERT(pDrawColor);
+            pDrawColor->Bind(Context, System);
+            pMesh->Draw(Context);
         } break;
         case DrawType::Texture:
         {
-            UpdateWorld(Context);
-            Mesh->Bind(Context);
-            // TODO(Chris): This is awful as-is.
-            //              We need to distinguish between
-            //              - Universal state needed for a draw call
-            //              - State thats expected to be different for each entity
-            //              We should also probably be able to tell what a draw call requires to be bound
-            //                  so that we can check we actually have that set before drawing
-            //GfxImpl::DrawTexture.Bind(Context);
-            {
-                Context->IASetInputLayout(GfxImpl::DrawTexture.InputLayout);
-                Context->VSSetShader(GfxImpl::DrawTexture.VertexShader, nullptr, 0);
-                Context->PSSetShader(GfxImpl::DrawTexture.PixelShader, nullptr, 0);
-                if (GfxImpl::DrawTexture.NumConstantBuffers)
-                {
-                    Context->VSSetConstantBuffers(0, GfxImpl::DrawTexture.NumConstantBuffers, GfxImpl::DrawTexture.ConstantBuffers);
-                    Context->PSSetConstantBuffers(0, GfxImpl::DrawTexture.NumConstantBuffers, GfxImpl::DrawTexture.ConstantBuffers);
-                }
-                Context->VSSetShaderResources(0, 1, &TextureState.TextureSRV);
-                Context->PSSetShaderResources(0, 1, &TextureState.TextureSRV);
-                Context->VSSetSamplers(0, 1, &TextureState.Sampler);
-                Context->PSSetSamplers(0, 1, &TextureState.Sampler);
-            }
-            Mesh->Draw(Context);
+            UpdateWorld(Context, System);
+            pMesh->Bind(Context);
+            DrawStateT* pDrawTexture = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Texture]);
+            ASSERT(pDrawTexture);
+            TextureStateT* pTexture = System->Textures.Get(TextureState.idTexture);
+            ASSERT(pTexture);
+            SamplerStateT* pSampler = System->Samplers.Get(TextureState.idSampler);
+            pDrawTexture->Bind(Context, System, 1u, &pTexture->SRV, 1u, pSampler);
+            pMesh->Draw(Context);
         } break;
         case DrawType::Unicolor:
         {
-            UpdateWorld(Context);
-            Context->UpdateSubresource(GfxImpl::WorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
+            UpdateWorld(Context, System);
+            ShaderBufferT* pUnicolorBuffer = System->ShaderBuffers.Get(System->idUnicolorBuffer);
+            ASSERT(pUnicolorBuffer);
+            DrawStateT* pDrawUnicolor = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Unicolor]);
+            ASSERT(pDrawUnicolor)
             v4f UnicolorBufferData[4] = { UnicolorState.Color };
-            Context->UpdateSubresource(GfxImpl::UnicolorBuffer, 0, nullptr, UnicolorBufferData, (u32)sizeof(UnicolorBufferData), 0);
-            Mesh->Bind(Context);
-            GfxImpl::DrawUnicolor.Bind(Context);
-            Mesh->Draw(Context);
+            Context->UpdateSubresource(*pUnicolorBuffer, 0, nullptr, UnicolorBufferData, (u32)sizeof(UnicolorBufferData), 0);
+            pMesh->Bind(Context);
+            pDrawUnicolor->Bind(Context, System);
+            pMesh->Draw(Context);
         } break;
         default:
         {
             ASSERT(false);
         } break;
     }
-}
-
-
-void GfxImpl::Draw(UBG_GfxContextT* Context)
-{
-    constexpr bool bDrawDemo = false;
-
-    if (bDrawDemo)
-    {
-        DrawDemo(Context);
-    }
-    else
-    {
-        DrawGame(Context);
-    }
-}
-
-void GfxImpl::DrawDemo(UBG_GfxContextT* Context)
-{
-    float HalfWidth = GlobalEngine->Width * 0.5f;
-    float HalfHeight = GlobalEngine->Height * 0.5f;
-    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
-    Context->UpdateSubresource(WorldBuffer, 0, nullptr, &SpriteWorld, (u32)sizeof(m4f), 0);
-    Context->UpdateSubresource(ViewProjBuffer, 0, nullptr, &CameraO, (u32)sizeof(CameraO), 0);
-
-    // MeshTriangle / DrawColor / DrawColorShaderState:
-    {
-        MeshTriangle.Bind(Context);
-        DrawColor.Bind(Context);
-        MeshTriangle.Draw(Context);
-    }
-
-    // MeshQuad / DrawTexture / DrawTextureShaderState:
-    {
-        MeshQuad.Bind(Context);
-        DrawTexture.Bind(Context);
-        MeshQuad.Draw(Context);
-    }
-
-    // MeshQuadMin / DrawUnicolor / DrawUnicolorShaderState:
-    {
-        v4f UnicolorData[4] = { };
-        GetClearColor(UnicolorData[0]);
-        // Set it to opposite color of clear color for now
-        UnicolorData[0] = { 1.0f - UnicolorData[0].X, 1.0f - UnicolorData[0].Y, 1.0f - UnicolorData[0].Z, 1.0f };
-        Context->UpdateSubresource(UnicolorBuffer, 0, nullptr, UnicolorData, (u32)sizeof(UnicolorData), 0);
-
-        MeshQuadMin.Bind(Context);
-        DrawUnicolor.Bind(Context);
-        MeshQuadMin.Draw(Context);
-    }
-}
-
-void GfxImpl::DrawGame(UBG_GfxContextT* Context)
-{
-    RE_System.DrawAll(Context);
-}
-
-bool GfxImpl::Init(ID3D11Device* Device)
-{
-    // Default texture / sampler:
-    {
-        ImageT DefaultImage = {};
-        GetDebugImage(DefaultImage);
-
-        D3D11_SUBRESOURCE_DATA TextureResDataDesc[] = { {} };
-        TextureResDataDesc[0].pSysMem = DefaultImage.PxBuffer;
-        TextureResDataDesc[0].SysMemPitch = sizeof(RGBA32) * DefaultImage.Width;
-        TextureResDataDesc[0].SysMemSlicePitch = TextureResDataDesc[0].SysMemPitch * DefaultImage.Height;
-        D3D11_TEXTURE2D_DESC DefaultTextureDesc = {};
-        DefaultTextureDesc.Width = DefaultImage.Width;
-        DefaultTextureDesc.Height = DefaultImage.Height;
-        DefaultTextureDesc.MipLevels = 1;
-        DefaultTextureDesc.ArraySize = 1;
-        DefaultTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        DefaultTextureDesc.SampleDesc = { 1, 0 };
-        DefaultTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-        DefaultTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        Device->CreateTexture2D(&DefaultTextureDesc, &TextureResDataDesc[0], &DefaultTexture);
-        Device->CreateShaderResourceView(DefaultTexture, nullptr, &DefaultTextureSRV);
-
-        D3D11_SAMPLER_DESC DefaultSamplerDesc = {};
-        DefaultSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-        DefaultSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-        DefaultSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-        DefaultSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-        Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
-
-        delete[] DefaultImage.PxBuffer;
-    }
-
-    D3D_SHADER_MACRO DefaultDefines[] =
-    {
-        "ENABLE_WVP_TRANSFORM", "1",
-        nullptr, nullptr
-    };
-
-    // World / ViewProj cbuffers
-    {
-        D3D11_BUFFER_DESC CommonBufferDesc = {};
-        CommonBufferDesc.ByteWidth = sizeof(m4f);
-        CommonBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        CommonBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        CommonBufferDesc.CPUAccessFlags = 0;
-        Device->CreateBuffer(&CommonBufferDesc, nullptr, &WorldBuffer);
-        CommonBufferDesc.ByteWidth = sizeof(m4f) * 2;
-        Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
-    }
-
-    ID3D11Buffer* WVPBuffers[] = { WorldBuffer, ViewProjBuffer };
-
-    // Shader color:
-    {
-        D3D11_INPUT_ELEMENT_DESC InputElements[] =
-        {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-        };
-
-        DrawColor = CreateDrawState
-        (
-            Device,
-            "src/hlsl/BaseShaderColor.hlsl",
-            DefaultDefines,
-            InputElements,
-            ARRAY_SIZE(InputElements),
-            ARRAY_SIZE(WVPBuffers), WVPBuffers,
-            0, nullptr,
-            0, nullptr
-        );
-    }
-
-    // Shader texture:
-    {
-        D3D11_INPUT_ELEMENT_DESC InputElements[] =
-        {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-        };
-
-        DrawTexture = CreateDrawState
-        (
-            Device,
-            "src/hlsl/BaseShaderTexture.hlsl",
-            DefaultDefines,
-            InputElements,
-            ARRAY_SIZE(InputElements),
-            ARRAY_SIZE(WVPBuffers), WVPBuffers,
-            1, &DefaultTextureSRV,
-            1, &DefaultSamplerState
-        );
-    }
-
-    // Shader unicolor:
-    {
-        D3D11_BUFFER_DESC UnicolorBufferDesc = {};
-        UnicolorBufferDesc.ByteWidth = sizeof(v4f);
-        UnicolorBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-        UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        UnicolorBufferDesc.CPUAccessFlags = 0;
-        Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
-
-        ID3D11Buffer* CBuffers[] = { WorldBuffer, ViewProjBuffer, UnicolorBuffer };
-
-        D3D11_INPUT_ELEMENT_DESC InputElements[] =
-        {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-        };
-
-        DrawUnicolor = CreateDrawState
-        (
-            Device,
-            "src/hlsl/BaseShaderUnicolor.hlsl",
-            DefaultDefines,
-            InputElements,
-            ARRAY_SIZE(InputElements),
-            ARRAY_SIZE(CBuffers), CBuffers,
-            0, nullptr,
-            0, nullptr
-        );
-    }
-
-    // Mesh triangle:
-    {
-        VxColor TriangleVerts[] = {
-            { { 0.0f, 0.5f, 0.5f, 1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { -0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { +0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
-        };
-
-        unsigned int TriangleInds[] = { 0, 2, 1 };
-
-        MeshTriangle = CreateMeshState
-        (
-            Device,
-            sizeof(VxColor),
-            ARRAY_SIZE(TriangleVerts),
-            TriangleVerts,
-            ARRAY_SIZE(TriangleInds),
-            TriangleInds
-        );
-    }
-
-    // Mesh(es) quad
-    {
-        VxTex QuadVerts[] = {
-            { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
-            { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
-            { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
-            { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
-        };
-
-        // TODO: Remove this once we have WVP transforms implemented, this is just to not draw the tex quad + unicolor quad in the same place
-        constexpr bool bTODORemoveThisTempQuadOffsetLater = true;
-        if (bTODORemoveThisTempQuadOffsetLater)
-        {
-            for (int VxIdx = 0; VxIdx < ARRAY_SIZE(QuadVerts); VxIdx++)
-            {
-                QuadVerts[VxIdx].Pos.X -= 0.5f;
-                QuadVerts[VxIdx].Pos.Y -= 0.5f;
-            }
-        }
-
-        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
-
-        MeshQuad = CreateMeshState
-        (
-            Device,
-            sizeof(VxTex),
-            ARRAY_SIZE(QuadVerts),
-            QuadVerts,
-            ARRAY_SIZE(QuadInds),
-            QuadInds
-        );
-
-        VxMin QuadMinVerts[] = {
-            { -0.5f, +0.5f, +0.5f, 1.0f},
-            { +0.5f, +0.5f, +0.5f, 1.0f},
-            { -0.5f, -0.5f, +0.5f, 1.0f},
-            { +0.5f, -0.5f, +0.5f, 1.0f},
-        };
-
-        MeshQuadMin = CreateMeshState
-        (
-            Device,
-            sizeof(VxMin),
-            ARRAY_SIZE(QuadMinVerts),
-            QuadMinVerts,
-            ARRAY_SIZE(QuadInds),
-            QuadInds
-        );
-
-    }
-
-    // TODO: Why is Depth passed as -2?
-    CameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
-
-    RE_System.Init();
-    RE_TriangleColor = RE_System.Create();
-    RE_QuadTexture = RE_System.Create();
-    RE_QuadUnicolor = RE_System.Create();
-
-    RenderEntity* ColorTriangleData = RE_System.Get(RE_TriangleColor);
-    RenderEntity* QuadTextureData = RE_System.Get(RE_QuadTexture);
-    RenderEntity* QuadUnicolorData = RE_System.Get(RE_QuadUnicolor);
-    ASSERT(ColorTriangleData);
-    ASSERT(QuadTextureData);
-    ASSERT(QuadUnicolorData);
-    float HalfWidth = GlobalEngine->Width * 0.5f;
-    float HalfHeight = GlobalEngine->Height * 0.5f;
-    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
-    if (ColorTriangleData)
-    {
-        ColorTriangleData->bVisible = true;
-        ColorTriangleData->World = SpriteWorld;
-        ColorTriangleData->Type = DrawType::Color;
-        ColorTriangleData->Mesh = &GfxImpl::MeshTriangle;
-        ColorTriangleData->ColorState = {};
-    }
-    if (QuadTextureData)
-    {
-        QuadTextureData->bVisible = true;
-        QuadTextureData->World = SpriteWorld;
-        QuadTextureData->Type = DrawType::Texture;
-        QuadTextureData->Mesh = &GfxImpl::MeshQuad;
-        QuadTextureData->TextureState = { };
-        QuadTextureData->TextureState.Texture = DefaultTexture;
-        QuadTextureData->TextureState.TextureSRV = DefaultTextureSRV;
-        QuadTextureData->TextureState.Sampler = DefaultSamplerState;
-    }
-    if (QuadUnicolorData)
-    {
-        QuadUnicolorData->bVisible = true;
-        QuadUnicolorData->World = SpriteWorld;
-        QuadUnicolorData->Type = DrawType::Unicolor;
-        QuadUnicolorData->Mesh = &GfxImpl::MeshQuadMin;
-        QuadUnicolorData->UnicolorState.Color = GetRandomColorDim();
-    }
-    // TODO: Check for correct init'd state here
-    return true;
-}
-
-bool GfxImpl::Term()
-{
-    RE_System.Term();
-
-    SafeRelease(DefaultTexture);
-    SafeRelease(DefaultTextureSRV);
-    SafeRelease(DefaultSamplerState);
-    SafeRelease(WorldBuffer);
-    SafeRelease(ViewProjBuffer);
-
-    DrawColor.SafeRelease();
-    DrawTexture.SafeRelease();
-    DrawUnicolor.SafeRelease();
-    SafeRelease(UnicolorBuffer);
-
-    MeshTriangle.SafeRelease();
-    MeshQuad.SafeRelease();
-    MeshQuadMin.SafeRelease();
-
-    return true;
 }
 
 void UBG_Gfx_DX11::DrawBegin()
@@ -628,7 +246,7 @@ void UBG_Gfx_DX11::DrawEnd()
 void UBG_Gfx_DX11::Draw()
 {
     DrawBegin();
-    GfxImpl::Draw(Context);
+    GlobalEngine->Instance->Draw(Context);
     DrawEnd();
 }
 
@@ -733,8 +351,6 @@ bool UBG_Gfx_DX11::Init()
         RenderTargetView && RasterState &&
         DepthStencil && DepthStencilView;
 
-    bResult &= GfxImpl::Init(Device);
-
     ASSERT(bResult);
 
     return bResult;
@@ -742,7 +358,7 @@ bool UBG_Gfx_DX11::Init()
 
 bool UBG_Gfx_DX11::Term()
 {
-    bool bResult = GfxImpl::Term();
+    bool bResult = true;
 
     SafeRelease(DepthStencil);
     SafeRelease(DepthStencilView);
@@ -910,11 +526,9 @@ DrawStateT CreateDrawState
     const D3D11_INPUT_ELEMENT_DESC* InputElements,
     size_t NumInputElements,
     u32 NumConstantBuffers,
-    ID3D11Buffer** ConstantBuffers,
+    ShaderBufferID* idsConstantBuffers,
     u32 NumShaderRVs,
-    ID3D11ShaderResourceView** ShaderRVs,
-    u32 NumSamplers,
-    ID3D11SamplerState** Samplers
+    u32 NumSamplers
 )
 {
     ASSERT(Device);
@@ -951,33 +565,17 @@ DrawStateT CreateDrawState
     SafeRelease(VSBlob);
     SafeRelease(PSBlob);
 
-    ASSERT(!NumConstantBuffers || ConstantBuffers);
-    ASSERT(!NumShaderRVs || ShaderRVs);
-    ASSERT(!NumSamplers || Samplers);
-    if (NumConstantBuffers && ConstantBuffers)
+    ASSERT(!NumConstantBuffers || idsConstantBuffers);
+    if (NumConstantBuffers && idsConstantBuffers)
     {
         Result.NumConstantBuffers = NumConstantBuffers;
         for (u32 Idx = 0; Idx < NumConstantBuffers; Idx++)
         {
-            Result.ConstantBuffers[Idx] = ConstantBuffers[Idx];
+            Result.idsConstantBuffers[Idx] = idsConstantBuffers[Idx];
         }
     }
-    if (NumShaderRVs && ShaderRVs)
-    {
-        Result.NumShaderRVs = NumShaderRVs;
-        for (u32 Idx = 0; Idx < NumShaderRVs; Idx++)
-        {
-            Result.ShaderRVs[Idx] = ShaderRVs[Idx];
-        }
-    }
-    if (NumSamplers && Samplers)
-    {
-        Result.NumSamplers = NumSamplers;
-        for (u32 Idx = 0; Idx < NumSamplers; Idx++)
-        {
-            Result.Samplers[Idx] = Samplers[Idx];
-        }
-    }
+    Result.NumShaderRVs = NumShaderRVs;
+    Result.NumSamplers = NumSamplers;
 
     return Result;
 }
@@ -1015,4 +613,298 @@ MeshStateT CreateMeshState
 
     return Result;
 }
+
+bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
+{
+    ASSERT(_GfxBackend);
+    GfxBackend = _GfxBackend;
+
+    Entities = {};
+    Entities.Init();
+
+    DrawStates = {};
+    DrawStates.Init();
+
+    ShaderBuffers = {};
+    ShaderBuffers.Init();
+
+    Textures = {};
+    Textures.Init();
+
+    Samplers = {};
+    Samplers.Init();
+
+    Meshes = {};
+    Meshes.Init();
+
+    // Default texture / sampler:
+    {
+        ImageT DefaultImage = {};
+        GetDebugImage(DefaultImage);
+        idFallbackTexture = CreateTexture(&DefaultImage);
+        delete[] DefaultImage.PxBuffer;
+
+        D3D11_SAMPLER_DESC DefaultSamplerDesc = {};
+        DefaultSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+        DefaultSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        DefaultSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        DefaultSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+
+        SamplerStateT DefaultSamplerState = {};
+        GfxBackend->Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
+        idDefaultSampler = Samplers.Create(DefaultSamplerState);
+    }
+
+    D3D_SHADER_MACRO DefaultDefines[] =
+    {
+        "ENABLE_WVP_TRANSFORM", "1",
+        nullptr, nullptr
+    };
+
+    // World / ViewProj cbuffers
+    {
+        D3D11_BUFFER_DESC CommonBufferDesc = {};
+        CommonBufferDesc.ByteWidth = sizeof(m4f);
+        CommonBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        CommonBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        CommonBufferDesc.CPUAccessFlags = 0;
+
+        ShaderBufferT WorldBuffer = {};
+        GfxBackend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &WorldBuffer);
+        idWorldBuffer = ShaderBuffers.Create(WorldBuffer);
+
+        ShaderBufferT ViewProjBuffer = {};
+        CommonBufferDesc.ByteWidth = sizeof(m4f) * 2;
+        GfxBackend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
+        idViewProjBuffer = ShaderBuffers.Create(ViewProjBuffer);
+    }
+
+    ShaderBufferID idsWVPBuffers[] = { idWorldBuffer, idViewProjBuffer };
+
+    // Shader color:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawStateT DrawColor = CreateDrawState
+        (
+            GfxBackend->Device,
+            "src/hlsl/BaseShaderColor.hlsl",
+            DefaultDefines,
+            InputElements,
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(idsWVPBuffers), idsWVPBuffers,
+            0, 0
+        );
+        idsDrawState[(size_t)DrawType::Color] = DrawStates.Create(DrawColor);
+    }
+
+    // Shader texture:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawStateT DrawTexture = CreateDrawState
+        (
+            GfxBackend->Device,
+            "src/hlsl/BaseShaderTexture.hlsl",
+            DefaultDefines,
+            InputElements,
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(idsWVPBuffers), idsWVPBuffers,
+            1, 1
+        );
+        idsDrawState[(size_t)DrawType::Texture] = DrawStates.Create(DrawTexture);
+    }
+
+    // Shader unicolor:
+    {
+        D3D11_BUFFER_DESC UnicolorBufferDesc = {};
+        UnicolorBufferDesc.ByteWidth = sizeof(v4f);
+        UnicolorBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+        UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        UnicolorBufferDesc.CPUAccessFlags = 0;
+        ShaderBufferT UnicolorBuffer = {};
+        GfxBackend->Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
+        idUnicolorBuffer = ShaderBuffers.Create(UnicolorBuffer);
+
+        ShaderBufferID idsCBuffers[] = { idsWVPBuffers[0], idsWVPBuffers[1], idUnicolorBuffer};
+
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        DrawStateT DrawUnicolor = CreateDrawState
+        (
+            GfxBackend->Device,
+            "src/hlsl/BaseShaderUnicolor.hlsl",
+            DefaultDefines,
+            InputElements,
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(idsCBuffers), idsCBuffers,
+            0, 0
+        );
+        idsDrawState[(size_t)DrawType::Unicolor] = DrawStates.Create(DrawUnicolor);
+    }
+
+    // idMesh triangle:
+    {
+        VxColor TriangleVerts[] = {
+            { { 0.0f, 0.5f, 0.5f, 1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
+            { { -0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
+            { { +0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
+        };
+
+        unsigned int TriangleInds[] = { 0, 2, 1 };
+
+        MeshStateT MeshTriangle = CreateMeshState
+        (
+            GfxBackend->Device,
+            sizeof(VxColor),
+            ARRAY_SIZE(TriangleVerts),
+            TriangleVerts,
+            ARRAY_SIZE(TriangleInds),
+            TriangleInds
+        );
+        idTriangle = Meshes.Create(MeshTriangle);
+    }
+
+    // Mesh(es) quad
+    {
+        VxTex QuadVerts[] = {
+            { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
+            { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
+            { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
+            { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
+        };
+
+        // TODO: Remove this once we have WVP transforms implemented, this is just to not draw the tex quad + unicolor quad in the same place
+        constexpr bool bTODORemoveThisTempQuadOffsetLater = true;
+        if (bTODORemoveThisTempQuadOffsetLater)
+        {
+            for (int VxIdx = 0; VxIdx < ARRAY_SIZE(QuadVerts); VxIdx++)
+            {
+                QuadVerts[VxIdx].Pos.X -= 0.5f;
+                QuadVerts[VxIdx].Pos.Y -= 0.5f;
+            }
+        }
+
+        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+
+        MeshStateT MeshQuad = CreateMeshState
+        (
+            GfxBackend->Device,
+            sizeof(VxTex),
+            ARRAY_SIZE(QuadVerts),
+            QuadVerts,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
+        idQuad = Meshes.Create(MeshQuad);
+
+        VxMin QuadMinVerts[] = {
+            { -0.5f, +0.5f, +0.5f, 1.0f},
+            { +0.5f, +0.5f, +0.5f, 1.0f},
+            { -0.5f, -0.5f, +0.5f, 1.0f},
+            { +0.5f, -0.5f, +0.5f, 1.0f},
+        };
+
+        MeshStateT MeshQuadMin = CreateMeshState
+        (
+            GfxBackend->Device,
+            sizeof(VxMin),
+            ARRAY_SIZE(QuadMinVerts),
+            QuadMinVerts,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
+        idQuadMin = Meshes.Create(MeshQuadMin);
+    }
+
+    // TODO: Why is Depth passed as -2?
+    MainCameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
+
+    Entities.Init();
+
+    float HalfWidth = GlobalEngine->Width * 0.5f;
+    float HalfHeight = GlobalEngine->Height * 0.5f;
+    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+
+    RenderEntity ColorTriangleData = {};
+    ColorTriangleData.bVisible = true;
+    ColorTriangleData.World = SpriteWorld;
+    ColorTriangleData.Type = DrawType::Color;
+    ColorTriangleData.idMesh = idTriangle;
+    ColorTriangleData.ColorState = {};
+    idTriangleColor = Entities.Create(ColorTriangleData);
+
+    RenderEntity QuadTextureData = {};
+    QuadTextureData.bVisible = true;
+    QuadTextureData.World = SpriteWorld;
+    QuadTextureData.Type = DrawType::Texture;
+    QuadTextureData.idMesh = idQuad;
+    QuadTextureData.TextureState.idTexture = idFallbackTexture;
+    QuadTextureData.TextureState.idSampler = idDefaultSampler;
+    idQuadTexture = Entities.Create(QuadTextureData);
+
+    RenderEntity QuadUnicolorData = {};
+    QuadUnicolorData.bVisible = true;
+    QuadUnicolorData.World = SpriteWorld;
+    QuadUnicolorData.Type = DrawType::Unicolor;
+    QuadUnicolorData.idMesh = idQuadMin;
+    QuadUnicolorData.UnicolorState.Color = GetRandomColorDim();
+    idQuadUnicolor = Entities.Create(QuadUnicolorData);
+
+    // TODO: Check for correct init'd state here
+    return true;
+}
+
+bool GfxSystem::Term()
+{
+    Entities.Term();
+    DrawStates.Term();
+    ShaderBuffers.Term();
+    Textures.Term();
+    Samplers.Term();
+    // TODO:
+    return true;
+}
+
+TextureStateID GfxSystem::CreateTexture(ImageT* Image)
+{
+    ASSERT(Image);
+
+    D3D11_SUBRESOURCE_DATA TextureResDataDesc[] = { {} };
+    TextureResDataDesc[0].pSysMem = Image->PxBuffer;
+    TextureResDataDesc[0].SysMemPitch = sizeof(RGBA32) * Image->Width;
+    TextureResDataDesc[0].SysMemSlicePitch = TextureResDataDesc[0].SysMemPitch * Image->Height;
+    D3D11_TEXTURE2D_DESC TextureDesc = {};
+    TextureDesc.Width = Image->Width;
+    TextureDesc.Height = Image->Height;
+    TextureDesc.MipLevels = 1;
+    TextureDesc.ArraySize = 1;
+    TextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    TextureDesc.SampleDesc = { 1, 0 };
+    TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+    TextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    TextureStateT NewTexture = {};
+    GfxBackend->Device->CreateTexture2D(&TextureDesc, &TextureResDataDesc[0], &NewTexture.Texture);
+    GfxBackend->Device->CreateShaderResourceView(NewTexture.Texture, nullptr, &NewTexture.SRV);
+    return Textures.Create(NewTexture);
+}
+
+void GfxSystem::DestroyTexture(TextureStateID ID)
+{
+    Textures.Destroy(ID);
+}
+
+
 

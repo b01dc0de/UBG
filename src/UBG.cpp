@@ -3,15 +3,18 @@
 void UBG_Engine::GameLoop()
 {
     ClockT::Tick();
-    UBG_PlatformT::Tick();
-    UBG_GfxT::Draw();
+    PlatformState->Tick();
+    GfxState->Draw();
 }
 
 bool UBG_Engine::Init()
 {
     Memory::Init();
 
-    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Init();
+    PlatformState = new UBG_PlatformT{};
+    GfxState = new UBG_GfxT{};
+
+    bool bResult = PlatformState->Init() && GfxState->Init();
     ClockT::Init();
 
     return bResult;
@@ -19,7 +22,7 @@ bool UBG_Engine::Init()
 
 bool UBG_Engine::Term()
 {
-    bool bResult = UBG_PlatformT::Init() && UBG_GfxT::Term();
+    bool bResult = PlatformState->Term() && GfxState->Term();
 
     Memory::Term();
 

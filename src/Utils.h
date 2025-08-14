@@ -10,23 +10,6 @@ struct FileContentsT
     void Release();
 };
 
-struct RGBA32
-{
-    u8 R;
-    u8 G;
-    u8 B;
-    u8 A;
-};
-
-struct ImageT
-{
-    u32 Width;
-    u32 Height;
-    size_t PxCount;
-    size_t PxBufferSize;
-    RGBA32* PxBuffer;
-};
-
 void GetDebugImage(ImageT& OutImage);
 void LoadBMPFile(const char* Filename, ImageT& OutImage);
 

@@ -13,6 +13,7 @@ struct QueueID
 
     void Init()
     {
+        Available = {};
         Available.Init();
         for (size_t Idx = 0u; Idx < NumIDs; Idx++)
         {
@@ -55,7 +56,7 @@ struct ListID
     SArray<TypeID, NumIDs> IndexToIDMap;
     size_t NumActive;
 
-    static constexpr bool bDebugPrint = true;
+    static constexpr bool bDebugPrint = false;
 
     void Init()
     {
@@ -76,12 +77,17 @@ struct ListID
 
     TypeID Create()
     {
+        return Create(T{});
+    }
+
+    TypeID Create(T NewItem)
+    {
         ASSERT(NumActive < NumIDs);
         TypeID ID = Queue.Pop();
         size_t NewIndex = NumActive;
         IDToIndexMap[ID] = NewIndex;
         IndexToIDMap[NewIndex] = ID;
-        ActiveList[NewIndex] = {};
+        ActiveList[NewIndex] = NewItem;
         NumActive++;
 
         if (bDebugPrint)

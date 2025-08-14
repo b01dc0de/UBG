@@ -9,12 +9,21 @@ extern void DebugBreakpoint();
 #define ASSERT(Expr) if (!(Expr)) { Outf("[assert] FAILED\n\tExp: %s\n\tFile: %s\tLine: %d\n\tFunc: %s", #Expr, __FILE__, __LINE__, __FUNCSIG__); DEBUG_BREAKPOINT(); }
 #define ARRAY_SIZE(Array) (sizeof((Array)) / sizeof((Array)[0]))
 
+// Common types:
+#include "UBG_Types.h"
+// UBG Platform impl:
+#include "UBG_Platform.h"
+// UBG Graphics backend impl:
+#include "UBG_Gfx.h"
+
 // Engine definition
 struct UBG_Engine
 {
     bool bRunning;
     int Width;
     int Height;
+    UBG_PlatformT* PlatformState;
+    UBG_GfxT* GfxState;
     struct UBGame* Instance;
 
     void GameLoop();
@@ -23,12 +32,6 @@ struct UBG_Engine
 };
 extern UBG_Engine* GlobalEngine;
 
-// Common types:
-#include "UBG_Types.h"
-// UBG Platform impl:
-#include "UBG_Platform.h"
-// UBG Graphics backend impl:
-#include "UBG_Gfx.h"
 // Common project headers:
 #include "Array.h"
 #include "Clock.h"

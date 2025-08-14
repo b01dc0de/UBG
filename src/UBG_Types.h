@@ -66,6 +66,23 @@ struct m4f
     static m4f Trans(f32 X, f32 Y, f32 Z);
 };
 
+struct RGBA32
+{
+    u8 R;
+    u8 G;
+    u8 B;
+    u8 A;
+};
+
+struct ImageT
+{
+    u32 Width;
+    u32 Height;
+    size_t PxCount;
+    size_t PxBufferSize;
+    RGBA32* PxBuffer;
+};
+
 #include "Array.h"
 #include "ListID.h"
 
