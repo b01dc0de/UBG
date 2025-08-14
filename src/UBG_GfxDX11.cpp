@@ -186,8 +186,7 @@ MeshStateT CreateMeshState
 
 void RenderEntitySystem::Init()
 {
-    Entities.Reserve(MaxEntities);
-    CounterID = 0;
+    Entities.Init();
 }
 
 void RenderEntitySystem::Term()
@@ -197,42 +196,17 @@ void RenderEntitySystem::Term()
 
 RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
 {
-    // TODO: Actually make this a fast ID lookup, instead of a linear search
-    RenderEntity* Result = nullptr;
-    for (size_t Idx = 0; Idx < Entities.Num; Idx++)
-    {
-        if (Entities[Idx].ID == ID)
-        {
-            Result = &Entities[Idx];
-            break;
-        }
-    }
-    return Result;
+    return Entities.Get(ID);
 }
 
 RenderEntityID RenderEntitySystem::Create()
 {
-    ASSERT(Entities.Num < MaxEntities);
-    RenderEntityID NewID = CounterID++;
-    RenderEntity NewEntity = {};
-    NewEntity.ID = NewID;
-    Entities.Add(NewEntity);
-    return NewID;
+    return Entities.Create();
 }
 
 void RenderEntitySystem::Destroy(RenderEntityID ID)
 {
-    RenderEntity* ToDestroy = Get(ID);
-    ASSERT(ToDestroy);
-    if (ToDestroy)
-    {
-        size_t IdxToRemove = ToDestroy - Entities.Data;
-        ASSERT(IdxToRemove < Entities.Num);
-        if (IdxToRemove < Entities.Num)
-        {
-            Entities.RemoveQ(IdxToRemove);
-        }
-    }
+    Entities.Destroy(ID);
 }
 
 void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context)
@@ -240,11 +214,11 @@ void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context)
     Context->UpdateSubresource(GfxImpl::ViewProjBuffer, 0, nullptr, &GfxImpl::CameraO, (u32)sizeof(GfxImpl::CameraO), 0);
 
     // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
-    for (size_t Idx = 0; Idx < Entities.Num; Idx++)
+    for (size_t Idx = 0; Idx < Entities.NumActive; Idx++)
     {
-        if (Entities[Idx].bVisible)
+        if (Entities.ActiveList[Idx].bVisible)
         {
-            Entities[Idx].Draw(Context);
+            Entities.ActiveList[Idx].Draw(Context);
         }
     }
 }

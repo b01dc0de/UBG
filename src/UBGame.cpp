@@ -17,14 +17,14 @@ struct UBGameImpl
         C_ID = Objects.Create();
         D_ID = Objects.Create();
 
-        float& rA = Objects.Get(A_ID);
-        rA = 1.0f;
-        float& rB = Objects.Get(B_ID);
-        rB = 1.0f;
-        float& rC = Objects.Get(C_ID);
-        rC = 1.0f;
-        float& rD = Objects.Get(D_ID);
-        rD = 1.0f;
+        float* pA = Objects.Get(A_ID);
+        *pA = 1.0f;
+        float* pB = Objects.Get(B_ID);
+        *pB = 2.0f;
+        float* pC = Objects.Get(C_ID);
+        *pC = 3.0f;
+        float* pD = Objects.Get(D_ID);
+        *pD = 4.0f;
 
         return true;
     }

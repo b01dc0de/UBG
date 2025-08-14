@@ -117,10 +117,11 @@ struct ListID
         }
     }
 
-    T& Get(TypeID ID)
+    T* Get(TypeID ID)
     {
         ASSERT(IDToIndexMap[ID] < NumActive);
-        return ActiveList[IDToIndexMap[ID]];
+        T* Result = IDToIndexMap[ID] < NumActive ? &ActiveList[IDToIndexMap[ID]] : nullptr;
+        return Result;
     }
 
     void DebugPrint()
@@ -149,3 +150,4 @@ struct ListID
 };
 
 #endif // LISTID_H
+

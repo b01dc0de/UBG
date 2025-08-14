@@ -63,11 +63,10 @@ struct DrawUnicolorState
     v4f Color;
 };
 
-using RenderEntityID = u32;
+using RenderEntityID = TypeID;
 
 struct RenderEntity
 {
-    RenderEntityID ID;
     bool bVisible;
     m4f World;
     DrawType Type;
@@ -85,9 +84,7 @@ struct RenderEntity
 
 struct RenderEntitySystem
 {
-    static constexpr size_t MaxEntities = 1024;
-    DArray<RenderEntity> Entities;
-    RenderEntityID CounterID;
+    ListID<RenderEntity> Entities;
 
     void Init();
     void Term();
