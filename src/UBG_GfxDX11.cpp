@@ -233,7 +233,6 @@ void UBG_Gfx_DX11::DrawBegin()
     GetClearColor(ClearColor);
     Context->ClearRenderTargetView(RenderTargetView, (float*)&ClearColor);
     Context->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-
 }
 
 void UBG_Gfx_DX11::DrawEnd()
@@ -431,7 +430,7 @@ void GetClearColor(v4f& OutClearColor)
             float CurrTime = (float)ClockT::CurrTime;
             float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
             int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
-            OutClearColor = lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
+            OutClearColor = Lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
         } break;
 
         case ClearColorMode::CYCLE_RANDOM:
@@ -449,7 +448,7 @@ void GetClearColor(v4f& OutClearColor)
                 NextColor = GetRandomColorDim();
             }
             float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
-            OutClearColor = lerp(CurrColor, NextColor, Factor);
+            OutClearColor = Lerp(CurrColor, NextColor, Factor);
         } break;
 
         default:

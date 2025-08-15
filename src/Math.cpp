@@ -33,6 +33,68 @@ m4f m4f::Identity()
     return Result;
 }
 
+m4f m4f::RotX(f32 Angle)
+{
+    const float fCos = cosf(Angle);
+    const float fSin = sinf(Angle);
+
+    m4f Result = Identity();
+    Result.V1 = { 0.0f,  fCos, -fSin, 0.0f };
+    Result.V2 = { 0.0f,  fSin,  fCos, 0.0f };
+    return Result;
+}
+
+m4f m4f::RotY(f32 Angle)
+{
+    const float fCos = cosf(Angle);
+    const float fSin = sinf(Angle);
+
+    m4f Result = Identity();
+    Result.V0 = { fCos, 0.0f,  fSin, 0.0f };
+    Result.V2 = { -fSin, 0.0f,  fCos, 0.0f };
+    return Result;
+}
+
+m4f m4f::RotZ(f32 Angle)
+{
+    const float fCos = cosf(Angle);
+    const float fSin = sinf(Angle);
+
+    m4f Result = Identity();
+    Result.V0 = { fCos,  -fSin, 0.0f, 0.0f };
+    Result.V1 = { fSin,   fCos, 0.0f, 0.0f };
+    return Result;
+}
+
+m4f m4f::RotAxis(v3f Axis, f32 Angle)
+{
+    v3f k = Norm(Axis);
+
+    float C = cosf(Angle);
+    float S = sinf(Angle);
+
+    float c_inv = 1.0f - C;
+
+    float k_xx = k.X * k.X;
+    float k_yy = k.Y * k.Y;
+    float k_zz = k.Z * k.Z;
+
+    float k_xy = k.X * k.Y;
+    float k_yz = k.Y * k.Z;
+    float k_xz = k.X * k.Z;
+
+    float s_x = S * k.X;
+    float s_y = S * k.Y;
+    float s_z = S * k.Z;
+
+    m4f Result;
+    Result.V0 = { C + k_xx * c_inv, +s_z + k_xy * c_inv, -s_y + k_xz * c_inv, 0.0f };
+    Result.V1 = { -s_z + k_xy * c_inv, C + k_yy * c_inv, +s_x + k_yz * c_inv, 0.0f };
+    Result.V2 = { +s_y + k_xz * c_inv, -s_x + k_yz * c_inv, C + k_zz * c_inv, 0.0f };
+    Result.V3 = { 0.0f, 0.0f, 0.0f, 1.0f };
+    return Result;
+}
+
 m4f m4f::Scale(f32 X, f32 Y, f32 Z)
 {
     m4f Result =
@@ -57,37 +119,77 @@ m4f m4f::Trans(f32 X, f32 Y, f32 Z)
     return Result;
 }
 
-f32 lerp(f32 A, f32 B, f32 t)
+float LengthSq(v2f V)
+{
+    float Result = V.X * V.X + V.Y * V.Y;
+    return Result;
+}
+
+float LengthSq(v3f V)
+{
+    float Result = V.X * V.X + V.Y * V.Y + V.Z * V.Z;
+    return Result;
+}
+
+float Length(v2f V)
+{
+    float Result = sqrtf(LengthSq(V));
+    return Result;
+}
+
+float Length(v3f V)
+{
+    float Result = sqrtf(LengthSq(V));
+    return Result;
+}
+
+v2f Norm(v2f V)
+{
+    // TODO: Protect against divide by zero!
+    float fLength = Length(V);
+    v2f Result{ V.X / fLength, V.Y / fLength };
+    return Result;
+}
+
+v3f Norm(v3f V)
+{
+    // TODO: Protect against divide by zero!
+    float fLength = Length(V);
+    v3f Result{ V.X / fLength, V.Y / fLength, V.Z / fLength };
+    return Result;
+}
+
+f32 Lerp(f32 A, f32 B, f32 t)
 {
     return A + t * (B - A);
 }
 
-v2f lerp(const v2f& A, const v2f& B, f32 t)
+v2f Lerp(const v2f& A, const v2f& B, f32 t)
 {
     v2f Result = {
-        lerp(A.X, B.X, t),
-        lerp(A.Y, B.Y, t)
+        Lerp(A.X, B.X, t),
+        Lerp(A.Y, B.Y, t)
     };
     return Result;
 }
 
-v3f lerp(const v3f& A, const v3f& B, f32 t)
+v3f Lerp(const v3f& A, const v3f& B, f32 t)
 {
     v3f Result = {
-        lerp(A.X, B.X, t),
-        lerp(A.Y, B.Y, t),
-        lerp(A.Z, B.Z, t)
+        Lerp(A.X, B.X, t),
+        Lerp(A.Y, B.Y, t),
+        Lerp(A.Z, B.Z, t)
     };
     return Result;
 }
 
-v4f lerp(const v4f& A, const v4f& B, f32 t)
+v4f Lerp(const v4f& A, const v4f& B, f32 t)
 {
     v4f Result = {
-        lerp(A.X, B.X, t),
-        lerp(A.Y, B.Y, t),
-        lerp(A.Z, B.Z, t),
-        lerp(A.W, B.W, t)
+        Lerp(A.X, B.X, t),
+        Lerp(A.Y, B.Y, t),
+        Lerp(A.Z, B.Z, t),
+        Lerp(A.W, B.W, t)
     };
     return Result;
 }

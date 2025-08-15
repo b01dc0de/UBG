@@ -62,6 +62,10 @@ struct m4f
     v4f V3;
 
     static m4f Identity();
+    static m4f RotX(f32 Angle);
+    static m4f RotY(f32 Angle);
+    static m4f RotZ(f32 Angle);
+    static m4f RotAxis(v3f Axis, f32 Angle);
     static m4f Scale(f32 X, f32 Y, f32 Z);
     static m4f Trans(f32 X, f32 Y, f32 Z);
 };

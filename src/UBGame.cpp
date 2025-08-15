@@ -1,8 +1,5 @@
 #include "UBG.h" // Includes UBGame.h
 
-// TODO: Move this (or remove this)
-#include <math.h>
-
 struct UBGameImpl
 {
     GfxSystem Gfx;
