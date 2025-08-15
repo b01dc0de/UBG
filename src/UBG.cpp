@@ -23,6 +23,9 @@ bool UBG_Engine::Init()
 bool UBG_Engine::Term()
 {
     bool bResult = PlatformState->Term() && GfxState->Term();
+    
+    delete GfxState;
+    delete PlatformState;
 
     Memory::Term();
 

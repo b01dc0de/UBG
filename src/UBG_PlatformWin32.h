@@ -10,15 +10,15 @@
 
 struct UBG_Platform_Win32
 {
-    static HINSTANCE hInstance;
-    static HWND hWindow;
-    //static HINSTANCE hPrevInstance;
-    //static LPSTR lpCmdLine;
-    //static int nShowCmd;
+    HINSTANCE hInstance;
+    HWND hWindow;
+    //HINSTANCE hPrevInstance;
+    //LPSTR lpCmdLine;
+    //int nShowCmd;
 
-    static void Tick();
-    static bool Init();
-    static bool Term();
+    void Tick();
+    bool Init();
+    bool Term();
 };
 
 using UBG_PlatformT = UBG_Platform_Win32;

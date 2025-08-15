@@ -18,12 +18,6 @@ void DebugBreakpoint()
     DebugBreak();
 }
 
-HINSTANCE UBG_Platform_Win32::hInstance = {};
-HWND UBG_Platform_Win32::hWindow = {};
-//HINSTANCE UBG_Platform_Win32::hPrevInstance = {};
-//LPSTR UBG_Platform_Win32::lpCmdLine = {};
-//int UBG_Platform_Win32::nShowCmd = {};
-
 void HandleKeyboardInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
 {
     UNUSED_VAR(lParam);
@@ -173,9 +167,17 @@ void UBG_Platform_Win32::Tick()
     }
 }
 
+static HINSTANCE WinMain_hInst = {};
+
 bool UBG_Platform_Win32::Init()
 {
     bool bResult = true;
+
+    hInstance = WinMain_hInst;
+    hWindow = {};
+    //hPrevInstance = {};
+    //lpCmdLine = {};
+    //nShowCmd = {};
 
 #if _DEBUG
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -235,7 +237,7 @@ int WinMain
     int       _nShowCmd
 )
 {
-    UBG_Platform_Win32::hInstance = _hInstance;
+    WinMain_hInst = _hInstance;
     //UBG_Platform_Win32::hPrevInstance = _hPrevInstance;
     //UBG_Platform_Win32::lpCmdLine = _lpCmdLine;
     //UBG_Platform_Win32::nShowCmd = _nShowCmd;

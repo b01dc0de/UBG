@@ -15,5 +15,7 @@ void LoadBMPFile(const char* Filename, ImageT& OutImage);
 
 int GetRandomInt(int Min, int Max);
 
+v4f GetRandomColorDim();
+
 #endif // UTILS_H
 

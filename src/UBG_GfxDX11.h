@@ -77,6 +77,7 @@ struct TextureStateT
 {
     ID3D11Texture2D* Texture;
     ID3D11ShaderResourceView* SRV;
+    void SafeRelease();
 };
 
 using SamplerStateT = ID3D11SamplerState*;
@@ -95,10 +96,6 @@ struct DrawColorState { }; // Nothing needed for now
 
 struct DrawTextureState
 {
-    /*
-    TextureStateT Texture;
-    SamplerStateT Sampler;
-    */
     TextureStateID idTexture;
     SamplerStateID idSampler;
 };
@@ -161,17 +158,13 @@ struct GfxSystem
 
     Camera MainCameraO;
 
-    // TODO: Move these into UBGame
-    MeshStateID idTriangle;
-    MeshStateID idQuad;
-    MeshStateID idQuadMin;
-    RenderEntityID idTriangleColor;
-    RenderEntityID idQuadTexture;
-    RenderEntityID idQuadUnicolor;
-
     bool Init(UBG_GfxT* _GfxBackend);
     bool Term();
 
+    RenderEntityID CreateEntity(RenderEntity EntityState);
+    void DestroyEntity(RenderEntityID ID);
+    MeshStateID CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
+    void DestroyMesh(MeshStateID ID);
     TextureStateID CreateTexture(ImageT* Image);
     void DestroyTexture(TextureStateID ID);
 };

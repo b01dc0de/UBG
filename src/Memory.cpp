@@ -15,7 +15,7 @@ struct MemPool
 {
     static constexpr size_t MaxBlocks = 1024;
 #if _DEBUG
-    static constexpr bool bDebugPrint = true;
+    static constexpr bool bDebugPrint = false;
 #endif // _DEBUG
 
     size_t DataSize;
@@ -51,7 +51,8 @@ struct MemPool
         ASSERT(DataSize && DataPool);
 
         #if _DEBUG
-        if (bDebugPrint)
+        static bool bPrintOnTerm = true;
+        if (bDebugPrint || bPrintOnTerm)
         {
             Outf("[memory][debug] Terminating...\n");
             DebugPrint(true);
@@ -319,7 +320,7 @@ struct MemPool
     {
         double PercentAlloc = ((double)TotalAllocSize / (double)DataSize) * 100.0;
         double PercentFree = ((double)TotalFreeSize / (double)DataSize) * 100.0;
-        Outf("[memory][debug] Total Allocated (%0.2f%%): %llu bytes\tNumBlocks: %llu\n", PercentAlloc, TotalAllocSize, NumAlloc);
+        Outf("[memory][debug]\n\tTotal Allocated (%0.2f%%): %llu bytes\tNumBlocks: %llu\n", PercentAlloc, TotalAllocSize, NumAlloc);
         Outf("\tTotal Free (%0.2f%%): %llu bytes\tNumBlocks: %llu\n", PercentFree, TotalFreeSize, NumFree);
         size_t NextAllocIdx = 0;
         size_t NextFreeIdx = 0;

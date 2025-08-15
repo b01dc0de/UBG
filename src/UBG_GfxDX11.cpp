@@ -86,7 +86,6 @@ void MeshStateT::SafeRelease()
     ::SafeRelease(IxBuffer);
 }
 
-v4f GetRandomColorDim();
 void GetClearColor(v4f& OutClearColor);
 int CompileShaderHLSL
 (
@@ -294,7 +293,7 @@ bool UBG_Gfx_DX11::Init()
     (void)DxFactory2->CreateSwapChainForHwnd(
         Device,
         // NOTE: This assumes UBG_PlatformT is Win32, which is required for DX anyway...
-        UBG_PlatformT::hWindow,
+        GlobalEngine->PlatformState->hWindow,
         &SwapChainDesc1,
         nullptr,
         nullptr,
@@ -382,16 +381,6 @@ bool UBG_Gfx_DX11::Term()
     SafeRelease(Device);
 
     return bResult;
-}
-
-v4f GetRandomColorDim()
-{
-    v4f Result = {};
-    Result.X = GetRandomInt(0, 100) / 255.0f;
-    Result.Y = GetRandomInt(0, 100) / 255.0f;
-    Result.Z = GetRandomInt(0, 100) / 255.0f;
-    Result.W = 1.0f;
-    return Result;
 }
 
 void GetClearColor(v4f& OutClearColor)
@@ -754,113 +743,10 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         idsDrawState[(size_t)DrawType::Unicolor] = DrawStates.Create(DrawUnicolor);
     }
 
-    // idMesh triangle:
-    {
-        VxColor TriangleVerts[] = {
-            { { 0.0f, 0.5f, 0.5f, 1.0f}, { 1.0f, 0.0f, 0.0f, 1.0f } },
-            { { -0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 1.0f, 0.0f, 1.0f } },
-            { { +0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
-        };
-
-        unsigned int TriangleInds[] = { 0, 2, 1 };
-
-        MeshStateT MeshTriangle = CreateMeshState
-        (
-            GfxBackend->Device,
-            sizeof(VxColor),
-            ARRAY_SIZE(TriangleVerts),
-            TriangleVerts,
-            ARRAY_SIZE(TriangleInds),
-            TriangleInds
-        );
-        idTriangle = Meshes.Create(MeshTriangle);
-    }
-
-    // Mesh(es) quad
-    {
-        VxTex QuadVerts[] = {
-            { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
-            { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
-            { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
-            { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
-        };
-
-        // TODO: Remove this once we have WVP transforms implemented, this is just to not draw the tex quad + unicolor quad in the same place
-        constexpr bool bTODORemoveThisTempQuadOffsetLater = true;
-        if (bTODORemoveThisTempQuadOffsetLater)
-        {
-            for (int VxIdx = 0; VxIdx < ARRAY_SIZE(QuadVerts); VxIdx++)
-            {
-                QuadVerts[VxIdx].Pos.X -= 0.5f;
-                QuadVerts[VxIdx].Pos.Y -= 0.5f;
-            }
-        }
-
-        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
-
-        MeshStateT MeshQuad = CreateMeshState
-        (
-            GfxBackend->Device,
-            sizeof(VxTex),
-            ARRAY_SIZE(QuadVerts),
-            QuadVerts,
-            ARRAY_SIZE(QuadInds),
-            QuadInds
-        );
-        idQuad = Meshes.Create(MeshQuad);
-
-        VxMin QuadMinVerts[] = {
-            { -0.5f, +0.5f, +0.5f, 1.0f},
-            { +0.5f, +0.5f, +0.5f, 1.0f},
-            { -0.5f, -0.5f, +0.5f, 1.0f},
-            { +0.5f, -0.5f, +0.5f, 1.0f},
-        };
-
-        MeshStateT MeshQuadMin = CreateMeshState
-        (
-            GfxBackend->Device,
-            sizeof(VxMin),
-            ARRAY_SIZE(QuadMinVerts),
-            QuadMinVerts,
-            ARRAY_SIZE(QuadInds),
-            QuadInds
-        );
-        idQuadMin = Meshes.Create(MeshQuadMin);
-    }
-
     // TODO: Why is Depth passed as -2?
     MainCameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
 
     Entities.Init();
-
-    float HalfWidth = GlobalEngine->Width * 0.5f;
-    float HalfHeight = GlobalEngine->Height * 0.5f;
-    m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
-
-    RenderEntity ColorTriangleData = {};
-    ColorTriangleData.bVisible = true;
-    ColorTriangleData.World = SpriteWorld;
-    ColorTriangleData.Type = DrawType::Color;
-    ColorTriangleData.idMesh = idTriangle;
-    ColorTriangleData.ColorState = {};
-    idTriangleColor = Entities.Create(ColorTriangleData);
-
-    RenderEntity QuadTextureData = {};
-    QuadTextureData.bVisible = true;
-    QuadTextureData.World = SpriteWorld;
-    QuadTextureData.Type = DrawType::Texture;
-    QuadTextureData.idMesh = idQuad;
-    QuadTextureData.TextureState.idTexture = idFallbackTexture;
-    QuadTextureData.TextureState.idSampler = idDefaultSampler;
-    idQuadTexture = Entities.Create(QuadTextureData);
-
-    RenderEntity QuadUnicolorData = {};
-    QuadUnicolorData.bVisible = true;
-    QuadUnicolorData.World = SpriteWorld;
-    QuadUnicolorData.Type = DrawType::Unicolor;
-    QuadUnicolorData.idMesh = idQuadMin;
-    QuadUnicolorData.UnicolorState.Color = GetRandomColorDim();
-    idQuadUnicolor = Entities.Create(QuadUnicolorData);
 
     // TODO: Check for correct init'd state here
     return true;
@@ -868,13 +754,64 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
 bool GfxSystem::Term()
 {
+    // TODO: Make sure we are actually clearing out gfx state / references correctly here
     Entities.Term();
+    for (size_t Idx = 0; Idx < DrawStates.NumActive; Idx++)
+    {
+        DrawStates.ActiveList[Idx].SafeRelease();
+    }
     DrawStates.Term();
+    for (size_t Idx = 0; Idx < ShaderBuffers.NumActive; Idx++)
+    {
+        SafeRelease(ShaderBuffers.ActiveList[Idx]);
+    }
     ShaderBuffers.Term();
+    for (size_t Idx = 0; Idx < Textures.NumActive; Idx++)
+    {
+        SafeRelease(Textures.ActiveList[Idx].Texture);
+        SafeRelease(Textures.ActiveList[Idx].SRV);
+    }
     Textures.Term();
+    for (size_t Idx = 0; Idx < Samplers.NumActive; Idx++)
+    {
+        SafeRelease(Samplers.ActiveList[Idx]);
+    }
     Samplers.Term();
-    // TODO:
+    for (size_t Idx = 0; Idx < Meshes.NumActive; Idx++)
+    {
+        Meshes.ActiveList[Idx].SafeRelease();
+    }
+    Meshes.Term();
     return true;
+}
+
+RenderEntityID GfxSystem::CreateEntity(RenderEntity EntityState)
+{
+    return Entities.Create(EntityState);
+}
+
+void GfxSystem::DestroyEntity(RenderEntityID ID)
+{
+    Entities.Destroy(ID);
+}
+
+MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
+{
+    MeshStateT NewMesh = CreateMeshState
+    (
+        GfxBackend->Device,
+        VertexSize,
+        NumVertices,
+        VertexData,
+        NumIndices,
+        IndexData
+    );
+    return Meshes.Create(NewMesh);
+}
+
+void GfxSystem::DestroyMesh(MeshStateID ID)
+{
+    Meshes.Destroy(ID);
 }
 
 TextureStateID GfxSystem::CreateTexture(ImageT* Image)

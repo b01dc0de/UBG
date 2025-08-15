@@ -177,3 +177,13 @@ int GetRandomInt(int Min, int Max)
     return Distrib(MersenneTwisterEngine);
 }
 
+v4f GetRandomColorDim()
+{
+    v4f Result = {};
+    Result.X = GetRandomInt(0, 100) / 255.0f;
+    Result.Y = GetRandomInt(0, 100) / 255.0f;
+    Result.Z = GetRandomInt(0, 100) / 255.0f;
+    Result.W = 1.0f;
+    return Result;
+}
+

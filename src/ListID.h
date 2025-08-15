@@ -1,6 +1,9 @@
 #ifndef LISTID_H
 #define LISTID_H
 
+// TODO: Would be nice to implement a generational index as well to verify
+//       That a current ID value is the one expected
+
 using TypeID = u64;
 static constexpr TypeID NumIDs = 32;
 

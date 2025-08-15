@@ -56,10 +56,7 @@ struct DArray
     {
         Capacity = InitCapacity;
         Num = 0u;
-        // NOTE(CKA): I'm adding this path temporarily so that I can have static DArrays
-        //            Want to remove this after RenderEntity/System is fully setup
-        if (InitCapacity) { Data = new T[Capacity]; }
-        else { Data = nullptr; }
+        Data = new T[Capacity];
     }
     void Term()
     {
