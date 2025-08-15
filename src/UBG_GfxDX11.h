@@ -18,6 +18,7 @@ struct UBG_Gfx_DX11
     ID3D11RasterizerState* RasterState;
     ID3D11Texture2D* DepthStencil;
     ID3D11DepthStencilView* DepthStencilView;
+    ID3D11BlendState* DefaultBlendState;
 
     void DrawBegin();
     void DrawEnd();

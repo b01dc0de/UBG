@@ -227,11 +227,13 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
 void UBG_Gfx_DX11::DrawBegin()
 {
     Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
+    Context->OMSetBlendState(DefaultBlendState, nullptr, 0xFFFFFFFF);
 
     v4f ClearColor = { };
     GetClearColor(ClearColor);
     Context->ClearRenderTargetView(RenderTargetView, (float*)&ClearColor);
     Context->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
 }
 
 void UBG_Gfx_DX11::DrawEnd()
@@ -342,13 +344,28 @@ bool UBG_Gfx_DX11::Init()
     ViewportDesc.MaxDepth = 1.0f;
     Context->RSSetViewports(1, &ViewportDesc);
 
-    Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
+    D3D11_RENDER_TARGET_BLEND_DESC RTBlendDesc = {};
+    RTBlendDesc.BlendEnable = true;
+    RTBlendDesc.SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    RTBlendDesc.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    RTBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
+    RTBlendDesc.SrcBlendAlpha = D3D11_BLEND_SRC_ALPHA;
+    RTBlendDesc.DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+    RTBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    RTBlendDesc.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+    D3D11_BLEND_DESC BlendDesc = {};
+    BlendDesc.AlphaToCoverageEnable = false;
+    BlendDesc.IndependentBlendEnable = false;
+    BlendDesc.RenderTarget[0] = RTBlendDesc;
+    Device->CreateBlendState(&BlendDesc, &DefaultBlendState);
 
+    Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
 
     bool bResult = Device && Context &&
         SwapChain && BackBuffer &&
         RenderTargetView && RasterState &&
-        DepthStencil && DepthStencilView;
+        DepthStencil && DepthStencilView &&
+        DefaultBlendState;
 
     ASSERT(bResult);
 
@@ -635,9 +652,10 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
         D3D11_SAMPLER_DESC DefaultSamplerDesc = {};
         DefaultSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-        DefaultSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-        DefaultSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-        DefaultSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        D3D11_TEXTURE_ADDRESS_MODE Mode = D3D11_TEXTURE_ADDRESS_CLAMP; // D3D11_TEXTURE_ADDRESS_WRAP;
+        DefaultSamplerDesc.AddressU = Mode;
+        DefaultSamplerDesc.AddressV = Mode;
+        DefaultSamplerDesc.AddressW = Mode;
 
         SamplerStateT DefaultSamplerState = {};
         GfxBackend->Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
