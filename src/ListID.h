@@ -5,9 +5,9 @@
 //       That a current ID value is the one expected
 
 using TypeID = u64;
-// TODO: Make this into a default template parameter:
-static constexpr TypeID NumIDs = 32;
+static constexpr TypeID DefaultNumIDs = 32;
 
+template <TypeID NumIDs = DefaultNumIDs>
 struct QueueID
 {
     SArray<TypeID, NumIDs> Available;
@@ -51,10 +51,10 @@ struct QueueID
     }
 };
 
-template <typename T>
+template <typename T, TypeID NumIDs = DefaultNumIDs>
 struct ListID
 {
-    QueueID Queue;
+    QueueID<NumIDs> Queue;
     SArray<T, NumIDs> ActiveList;
     SArray<size_t, NumIDs> IDToIndexMap;
     SArray<TypeID, NumIDs> IndexToIDMap;
