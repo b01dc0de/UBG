@@ -746,8 +746,6 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
     // TODO: Why is Depth passed as -2?
     MainCameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
 
-    Entities.Init();
-
     // TODO: Check for correct init'd state here
     return true;
 }

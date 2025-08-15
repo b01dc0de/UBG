@@ -22,7 +22,7 @@ bool UBG_Engine::Init()
 
 bool UBG_Engine::Term()
 {
-    bool bResult = PlatformState->Term() && GfxState->Term();
+    bool bResult = GfxState->Term() && PlatformState->Term();
     
     delete GfxState;
     delete PlatformState;
@@ -42,7 +42,7 @@ int UBG_Main()
     GlobalEngine = &Engine;
     bool bResult = Engine.Init();
 
-    MAIN_ASSERT(bResult, "Platform initialization failed");
+    MAIN_ASSERT(bResult, "Engine initialization failed");
 
     Engine.Instance = new UBGame{};
     Engine.Instance->Init();
