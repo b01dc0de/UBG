@@ -2,6 +2,18 @@
 
 int KeyboardState::KeysPressed[] = { };
 
+bool KeyboardState::GetKey(int KeyCode)
+{
+    for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)
+    {
+        if (KeysPressed[KeyIdx] == KeyCode)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void KeyboardState::SetKeyUp(int Key)
 {
     for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)

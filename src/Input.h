@@ -6,6 +6,7 @@ struct KeyboardState
     static constexpr int MaxNumKeys = 8;
     static int KeysPressed[MaxNumKeys];
 
+    static bool GetKey(int KeyCode);
     static void SetKeyUp(int KeyCode);
     static void SetKeyDown(int KeyCode);
 };

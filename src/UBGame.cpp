@@ -1,51 +1,100 @@
 #include "UBG.h" // Includes UBGame.h
 
-struct UBGameImpl
+struct PlayerShip
 {
-    GfxSystem Gfx;
+    RenderEntityID idShip;
+    v2f Pos;
+    float Angle;
 
-    MeshStateID idQuad;
-    RenderEntityID idPlayerShip;
-    RenderEntityID idBossShip;
-
-    bool Init()
+    void Init(GfxSystem* Gfx)
     {
-        bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
-
-        {
-            VxTex QuadVerts[] = {
-                { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
-                { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
-                { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
-                { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
-            };
-
-            unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
-
-            idQuad = Gfx.CreateMesh(
-                sizeof(VxTex),
-                ARRAY_SIZE(QuadVerts),
-                QuadVerts,
-                ARRAY_SIZE(QuadInds),
-                QuadInds
-            );
-        }
-
-        float HalfWidth = GlobalEngine->Width * 0.5f;
-        float HalfHeight = GlobalEngine->Height * 0.5f;
-        m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+        Pos = { 0.0f, 0.0f };
+        Angle = 0.0f;
 
         ImageT PlayerShipTextureImage = {};
         LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
         ASSERT(PlayerShipTextureImage.PxBuffer);
         RenderEntity PlayerShipData = {};
         PlayerShipData.bVisible = true;
-        PlayerShipData.World = SpriteWorld;
+        PlayerShipData.World = m4f::Identity();
         PlayerShipData.Type = DrawType::Texture;
-        PlayerShipData.idMesh = idQuad;
-        PlayerShipData.TextureState.idTexture = Gfx.CreateTexture(&PlayerShipTextureImage);
-        PlayerShipData.TextureState.idSampler = Gfx.idDefaultSampler;
-        idPlayerShip = Gfx.CreateEntity(PlayerShipData);
+        PlayerShipData.idMesh = Gfx->idQuadTexture;
+        PlayerShipData.TextureState.idTexture = Gfx->CreateTexture(&PlayerShipTextureImage);
+        PlayerShipData.TextureState.idSampler = Gfx->idDefaultSampler;
+        idShip = Gfx->CreateEntity(PlayerShipData);
+        delete[] PlayerShipTextureImage.PxBuffer;
+
+    }
+    void Term(GfxSystem* Gfx)
+    {
+        Gfx->Entities.Destroy(idShip);
+    }
+
+    void Update(GfxSystem* Gfx)
+    {
+        bool bKeyW = KeyboardState::GetKey('W');
+        bool bKeyA = KeyboardState::GetKey('A');
+        bool bKeyS = KeyboardState::GetKey('S');
+        bool bKeyD = KeyboardState::GetKey('D');
+        constexpr float fSpeed = 00.1f;
+        if (bKeyW != bKeyS)
+        {
+            Pos.Y += bKeyW ? fSpeed : -fSpeed;
+        }
+        if (bKeyA != bKeyD)
+        {
+            Pos.X += bKeyD ? fSpeed : -fSpeed;
+        }
+
+        if (!MouseState::bOffscreen)
+        {
+            int HalfWidth = GlobalEngine->Width / 2;
+            int HalfHeight = GlobalEngine->Height / 2;
+            v2f MousePos = { (float)(MouseState::MouseX - HalfWidth), (float)(MouseState::MouseY - HalfHeight) };
+            v2f Diff = { MousePos.X - Pos.X, MousePos.Y + Pos.Y };
+            if (fIsZero(Length(Diff)))
+            {
+                Angle = 0.0f;
+            }
+            else
+            {
+                Angle = atan2f(Diff.Y, Diff.X);
+            }
+        }
+
+        RenderEntity* pRent = Gfx->Entities.Get(idShip);
+        ASSERT(pRent);
+        pRent->World = m4f::Scale(100.0f, 100.0f, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
+
+        /*
+        RenderEntity* pPlayerShip = Gfx->Entities.Get(idShip);
+        ASSERT(pPlayerShip);
+        float fTime = (float)ClockT::CurrTime;
+        float HalfWidth = GlobalEngine->Width * 0.5f;
+        float HalfHeight = GlobalEngine->Height * 0.5f;
+        pPlayerShip->World = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(sinf(fTime)*HalfWidth, cosf(fTime)*HalfHeight, 0.0f);
+        */
+    }
+};
+
+struct UBGameImpl
+{
+    GfxSystem Gfx;
+
+    PlayerShip Player;
+    RenderEntityID idBossShip;
+
+    bool Init()
+    {
+        bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
+
+        /*
+        float HalfWidth = GlobalEngine->Width * 0.5f;
+        float HalfHeight = GlobalEngine->Height * 0.5f;
+        m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+        */
+
+        Player.Init(&Gfx);
 
         /*
         RenderEntity BossShipData = {};
@@ -59,12 +108,7 @@ struct UBGameImpl
     }
     void Update()
     {
-        RenderEntity* pPlayerShip = Gfx.Entities.Get(idPlayerShip);
-        ASSERT(pPlayerShip);
-        float fTime = (float)ClockT::CurrTime;
-        float HalfWidth = GlobalEngine->Width * 0.5f;
-        float HalfHeight = GlobalEngine->Height * 0.5f;
-        pPlayerShip->World = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(sinf(fTime)*HalfWidth, cosf(fTime)*HalfHeight, 0.0f);
+        Player.Update(&Gfx);
     }
     void Draw(UBG_GfxContextT* Context)
     {

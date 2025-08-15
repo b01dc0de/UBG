@@ -1,6 +1,13 @@
 #ifndef MATH_H
 #define MATH_H
 
+bool fIsZero(f32 A);
+
+v2f Add(v2f A, v2f B);
+v3f Add(v3f A, v3f B);
+v2f Subtract(v2f A, v2f B);
+v3f Subtract(v3f A, v3f B);
+
 float LengthSq(v2f V);
 float LengthSq(v3f V);
 float Length(v2f V);
@@ -8,10 +15,15 @@ float Length(v3f V);
 v2f Norm(v2f V);
 v3f Norm(v3f V);
 
+float Dot(v2f A, v2f B);
+float Dot(v3f A, v3f B);
+float Dot(v4f A, v4f B);
+v3f Cross(v3f A, v3f B);
+
 f32 Lerp(f32 A, f32 B, f32 t);
-v2f Lerp(const v2f& A, const v2f& B, f32 t);
-v3f Lerp(const v3f& A, const v3f& B, f32 t);
-v4f Lerp(const v4f& A, const v4f& B, f32 t);
+v2f Lerp(v2f A, v2f B, f32 t);
+v3f Lerp(v3f A, v3f B, f32 t);
+v4f Lerp(v4f A, v4f B, f32 t);
 
 m2f Mult(const m2f& A, const m2f& B);
 m3f Mult(const m3f& A, const m3f& B);

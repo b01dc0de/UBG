@@ -1,5 +1,7 @@
 #include "UBG.h" // Includes Math.h
 
+#include <float.h>
+
 m2f m2f::Identity()
 {
     m2f Result =
@@ -119,6 +121,36 @@ m4f m4f::Trans(f32 X, f32 Y, f32 Z)
     return Result;
 }
 
+bool fIsZero(f32 A)
+{
+    constexpr f32 fEpsilon = FLT_EPSILON;
+    return fabsf(A) < fEpsilon;
+}
+
+v2f Add(v2f A, v2f B)
+{
+    v2f Result = { A.X + B.X, A.Y + B.Y };
+    return Result;
+}
+
+v3f Add(v3f A, v3f B)
+{
+    v3f Result = { A.X + B.X, A.Y + B.Y, A.Z + B.Z };
+    return Result;
+}
+
+v2f Subtract(v2f A, v2f B)
+{
+    v2f Result = { A.X - B.X, A.Y - B.Y };
+    return Result;
+}
+
+v3f Subtract(v3f A, v3f B)
+{
+    v3f Result = { A.X - B.X, A.Y - B.Y, A.Z - B.Z };
+    return Result;
+}
+
 float LengthSq(v2f V)
 {
     float Result = V.X * V.X + V.Y * V.Y;
@@ -145,17 +177,51 @@ float Length(v3f V)
 
 v2f Norm(v2f V)
 {
-    // TODO: Protect against divide by zero!
     float fLength = Length(V);
-    v2f Result{ V.X / fLength, V.Y / fLength };
+    v2f Result = { 0.0f, 0.0f };
+    if (!fIsZero(fLength))
+    {
+        Result = { V.X / fLength, V.Y / fLength };
+    }
     return Result;
 }
 
 v3f Norm(v3f V)
 {
-    // TODO: Protect against divide by zero!
     float fLength = Length(V);
-    v3f Result{ V.X / fLength, V.Y / fLength, V.Z / fLength };
+    v3f Result = { 0.0f, 0.0f, 0.0f };
+    if (!fIsZero(fLength))
+    {
+        Result = { V.X / fLength, V.Y / fLength, V.Z / fLength };
+    }
+    return Result;
+}
+
+float Dot(v2f A, v2f B)
+{
+    float Result = A.X * B.X + A.Y * B.Y;
+    return Result;
+}
+
+float Dot(v3f A, v3f B)
+{
+    float Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z;
+    return Result;
+}
+
+float Dot(v4f A, v4f B)
+{
+    float Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z + A.W * B.W;
+    return Result;
+}
+
+v3f Cross(v3f A, v3f B)
+{
+    v3f Result = {
+        A.Y * B.Z - A.Z * B.Y,
+        A.Z * B.X - A.X * B.Z,
+        A.X * B.Y - A.Y * B.X,
+    };
     return Result;
 }
 
@@ -164,7 +230,7 @@ f32 Lerp(f32 A, f32 B, f32 t)
     return A + t * (B - A);
 }
 
-v2f Lerp(const v2f& A, const v2f& B, f32 t)
+v2f Lerp(v2f A, v2f B, f32 t)
 {
     v2f Result = {
         Lerp(A.X, B.X, t),
@@ -173,7 +239,7 @@ v2f Lerp(const v2f& A, const v2f& B, f32 t)
     return Result;
 }
 
-v3f Lerp(const v3f& A, const v3f& B, f32 t)
+v3f Lerp(v3f A, v3f B, f32 t)
 {
     v3f Result = {
         Lerp(A.X, B.X, t),
@@ -183,7 +249,7 @@ v3f Lerp(const v3f& A, const v3f& B, f32 t)
     return Result;
 }
 
-v4f Lerp(const v4f& A, const v4f& B, f32 t)
+v4f Lerp(v4f A, v4f B, f32 t)
 {
     v4f Result = {
         Lerp(A.X, B.X, t),

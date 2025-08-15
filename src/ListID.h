@@ -5,6 +5,7 @@
 //       That a current ID value is the one expected
 
 using TypeID = u64;
+// TODO: Make this into a default template parameter:
 static constexpr TypeID NumIDs = 32;
 
 struct QueueID

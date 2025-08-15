@@ -760,6 +760,26 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         idsDrawState[(size_t)DrawType::Unicolor] = DrawStates.Create(DrawUnicolor);
     }
 
+    // Platonic quad:
+    {
+        VxTex QuadVerts[] = {
+            { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
+            { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
+            { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
+            { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
+        };
+
+        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+
+        idQuadTexture = CreateMesh(
+            sizeof(VxTex),
+            ARRAY_SIZE(QuadVerts),
+            QuadVerts,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
+    }
+
     // TODO: Why is Depth passed as -2?
     MainCameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
 
