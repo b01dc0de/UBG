@@ -4,6 +4,7 @@ void UBG_Engine::GameLoop()
 {
     ClockT::Tick();
     PlatformState->Tick();
+    Instance->Update();
     GfxState->Draw();
 }
 

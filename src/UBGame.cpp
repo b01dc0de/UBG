@@ -1,6 +1,86 @@
 #include "UBG.h" // Includes UBGame.h
 
+// TODO: Move this (or remove this)
+#include <math.h>
+
 struct UBGameImpl
+{
+    GfxSystem Gfx;
+
+    MeshStateID idQuad;
+    RenderEntityID idPlayerShip;
+    RenderEntityID idBossShip;
+
+    bool Init()
+    {
+        bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
+
+        {
+            VxTex QuadVerts[] = {
+                { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
+                { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
+                { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
+                { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
+            };
+
+            unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+
+            idQuad = Gfx.CreateMesh(
+                sizeof(VxTex),
+                ARRAY_SIZE(QuadVerts),
+                QuadVerts,
+                ARRAY_SIZE(QuadInds),
+                QuadInds
+            );
+        }
+
+        float HalfWidth = GlobalEngine->Width * 0.5f;
+        float HalfHeight = GlobalEngine->Height * 0.5f;
+        m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
+
+        ImageT PlayerShipTextureImage = {};
+        LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
+        ASSERT(PlayerShipTextureImage.PxBuffer);
+        RenderEntity PlayerShipData = {};
+        PlayerShipData.bVisible = true;
+        PlayerShipData.World = SpriteWorld;
+        PlayerShipData.Type = DrawType::Texture;
+        PlayerShipData.idMesh = idQuad;
+        PlayerShipData.TextureState.idTexture = Gfx.CreateTexture(&PlayerShipTextureImage);
+        PlayerShipData.TextureState.idSampler = Gfx.idDefaultSampler;
+        idPlayerShip = Gfx.CreateEntity(PlayerShipData);
+
+        /*
+        RenderEntity BossShipData = {};
+        BossShipData.bVisible = true;
+        BossShipData.World = SpriteWorld;
+        BossShipData.Type = DrawType::Unicolor;
+        BossShipData.idMesh = idQuad;
+        BossShipData.UnicolorState.Color = GetRandomColorDim();
+        */
+        return bResult;
+    }
+    void Update()
+    {
+        RenderEntity* pPlayerShip = Gfx.Entities.Get(idPlayerShip);
+        ASSERT(pPlayerShip);
+        float fTime = (float)ClockT::CurrTime;
+        float HalfWidth = GlobalEngine->Width * 0.5f;
+        float HalfHeight = GlobalEngine->Height * 0.5f;
+        pPlayerShip->World = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(sinf(fTime)*HalfWidth, cosf(fTime)*HalfHeight, 0.0f);
+    }
+    void Draw(UBG_GfxContextT* Context)
+    {
+        Gfx.Entities.DrawAll(Context, &Gfx);
+    }
+    bool Term()
+    {
+        bool bResult = Gfx.Term();
+        return bResult;
+    }
+};
+
+struct UBGameImplDemo
 {
     GfxSystem System;
 
@@ -126,11 +206,18 @@ struct UBGameImpl
     }
 };
 
+#define RUN_DEMO() (0)
+#if RUN_DEMO()
+UBGameImplDemo* Impl = nullptr;
+using UBGameImplT = UBGameImplDemo;
+#else
 UBGameImpl* Impl = nullptr;
+using UBGameImplT = UBGameImpl;
+#endif // RUN_DEMO()
 
 bool UBGame::Init()
 {
-    Impl = new UBGameImpl{};
+    Impl = new UBGameImplT{};
     return Impl->Init();
 }
 
@@ -150,4 +237,3 @@ void UBGame::Draw(UBG_GfxContextT* Context)
 {
     Impl->Draw(Context);
 }
-
