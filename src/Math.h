@@ -1,7 +1,12 @@
 #ifndef MATH_H
 #define MATH_H
 
+static constexpr f32 fPI = 3.14159265359f;
+static constexpr f32 fTAU = fPI * 2.0f;
+
 bool fIsZero(f32 A);
+
+float Clamp(f32 Min, float Max, float C);
 
 v2f Add(v2f A, v2f B);
 v3f Add(v3f A, v3f B);

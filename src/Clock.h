@@ -1,6 +1,8 @@
 #ifndef CLOCK_H
 #define CLOCK_H
 
+// TODO: Make this non-static
+
 struct ClockT
 {
     static u64 Freq;

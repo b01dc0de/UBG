@@ -166,13 +166,19 @@ void LoadBMPFile(const char* Filename, ImageT& OutImage)
     }
 }
 
+static std::random_device RandomDevice{};
+static std::mt19937 MersenneTwisterEngine{ RandomDevice() };
 int GetRandomInt(int Min, int Max)
 {
     ASSERT(Min <= Max);
-    static std::random_device RandomDevice{};
-    static std::mt19937 MersenneTwisterEngine{ RandomDevice() };
-
     std::uniform_int_distribution<int> Distrib(Min, Max);
+
+    return Distrib(MersenneTwisterEngine);
+}
+
+float GetRandomFloatNorm()
+{
+    static std::uniform_real_distribution<float> Distrib(0.0f, 1.0f);
 
     return Distrib(MersenneTwisterEngine);
 }

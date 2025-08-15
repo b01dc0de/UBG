@@ -14,6 +14,7 @@ void GetDebugImage(ImageT& OutImage);
 void LoadBMPFile(const char* Filename, ImageT& OutImage);
 
 int GetRandomInt(int Min, int Max);
+float GetRandomFloatNorm();
 
 v4f GetRandomColorDim();
 

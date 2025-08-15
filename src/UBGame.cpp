@@ -2,13 +2,16 @@
 
 struct PlayerShip
 {
+    TextureStateID idShipTexture;
     RenderEntityID idShip;
     v2f Pos;
+    float Scale;
     float Angle;
 
     void Init(GfxSystem* Gfx)
     {
-        Pos = { 0.0f, 0.0f };
+        Pos = { (float)GlobalEngine->Width*-0.25f, (float)GlobalEngine->Height*+0.25f };
+        Scale = 100.0f;
         Angle = 0.0f;
 
         ImageT PlayerShipTextureImage = {};
@@ -19,7 +22,8 @@ struct PlayerShip
         PlayerShipData.World = m4f::Identity();
         PlayerShipData.Type = DrawType::Texture;
         PlayerShipData.idMesh = Gfx->idQuadTexture;
-        PlayerShipData.TextureState.idTexture = Gfx->CreateTexture(&PlayerShipTextureImage);
+        idShipTexture = Gfx->CreateTexture(&PlayerShipTextureImage);
+        PlayerShipData.TextureState.idTexture = idShipTexture;
         PlayerShipData.TextureState.idSampler = Gfx->idDefaultSampler;
         idShip = Gfx->CreateEntity(PlayerShipData);
         delete[] PlayerShipTextureImage.PxBuffer;
@@ -27,6 +31,7 @@ struct PlayerShip
     }
     void Term(GfxSystem* Gfx)
     {
+        Gfx->Entities.Destroy(idShipTexture);
         Gfx->Entities.Destroy(idShip);
     }
 
@@ -45,12 +50,15 @@ struct PlayerShip
         {
             Pos.X += bKeyD ? fSpeed : -fSpeed;
         }
+        float HalfScale = Scale * 0.5f;
+        float HalfWidth = GlobalEngine->Width * 0.5f;
+        float HalfHeight = GlobalEngine->Height * 0.5f;
+        Pos.X = Clamp(0.0f + HalfScale - HalfWidth, GlobalEngine->Width - HalfScale - HalfWidth, Pos.X);
+        Pos.Y = Clamp(0.0f + HalfScale - HalfHeight, GlobalEngine->Height - HalfScale - HalfHeight, Pos.Y);
 
         if (!MouseState::bOffscreen)
         {
-            int HalfWidth = GlobalEngine->Width / 2;
-            int HalfHeight = GlobalEngine->Height / 2;
-            v2f MousePos = { (float)(MouseState::MouseX - HalfWidth), (float)(MouseState::MouseY - HalfHeight) };
+            v2f MousePos = { MouseState::MouseX - HalfWidth, MouseState::MouseY - HalfHeight };
             v2f Diff = { MousePos.X - Pos.X, MousePos.Y + Pos.Y };
             if (fIsZero(Length(Diff)))
             {
@@ -64,16 +72,60 @@ struct PlayerShip
 
         RenderEntity* pRent = Gfx->Entities.Get(idShip);
         ASSERT(pRent);
-        pRent->World = m4f::Scale(100.0f, 100.0f, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
+        pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
+    }
+};
 
-        /*
-        RenderEntity* pPlayerShip = Gfx->Entities.Get(idShip);
-        ASSERT(pPlayerShip);
-        float fTime = (float)ClockT::CurrTime;
-        float HalfWidth = GlobalEngine->Width * 0.5f;
-        float HalfHeight = GlobalEngine->Height * 0.5f;
-        pPlayerShip->World = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(sinf(fTime)*HalfWidth, cosf(fTime)*HalfHeight, 0.0f);
-        */
+struct BossShip
+{
+    RenderEntityID idShipMesh;
+    RenderEntityID idShip;
+
+    void Init(GfxSystem* Gfx)
+    {
+        constexpr u32 BossNumPoints = 32;
+        constexpr size_t BossNumVerts = BossNumPoints + 1;
+        constexpr size_t BossNumTris = BossNumPoints;
+        constexpr size_t BossNumInds = BossNumTris * 3;
+        constexpr float AverageRadius = 10.0f;
+        constexpr float RadiusVariance = 5.0f;
+
+        // Boss mesh:
+        {
+            VxMin BossVerts[BossNumVerts] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+            for (u32 Idx = 1; Idx < BossNumVerts; Idx++)
+            {
+                float Radius = AverageRadius + ((GetRandomFloatNorm() - 0.5f) * RadiusVariance);
+                float Angle = (float)(Idx - 1) / (float)(BossNumVerts - 1) * fTAU;
+                BossVerts[Idx] = { Radius * cosf(Angle), Radius * sinf(Angle), 0.0f, 1.0f };
+            }
+
+            u32 BossInds[BossNumTris * 3] = {};
+            for (u32 TriIdx = 0; TriIdx < BossNumTris; TriIdx++)
+            {
+                size_t BaseIdx = TriIdx * 3;
+                BossInds[BaseIdx + 0] = 0;
+                BossInds[BaseIdx + 1] = TriIdx == BossNumTris - 1 ? 1 : TriIdx + 2;
+                BossInds[BaseIdx + 2] = TriIdx + 1;
+            }
+            idShipMesh = Gfx->CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
+        }
+
+        RenderEntity BossShipData = {};
+        BossShipData.bVisible = true;
+        BossShipData.World = m4f::Scale(10.0f, 10.0f, 1.0);
+        BossShipData.Type = DrawType::Unicolor;
+        BossShipData.idMesh = idShipMesh;
+        BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
+        idShip = Gfx->CreateEntity(BossShipData);
+    }
+    void Term(GfxSystem* Gfx)
+    {
+        (void)Gfx;
+    }
+    void Update(GfxSystem* Gfx)
+    {
+        (void)Gfx;
     }
 };
 
@@ -82,19 +134,14 @@ struct UBGameImpl
     GfxSystem Gfx;
 
     PlayerShip Player;
-    RenderEntityID idBossShip;
+    BossShip Boss;
 
     bool Init()
     {
         bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
 
-        /*
-        float HalfWidth = GlobalEngine->Width * 0.5f;
-        float HalfHeight = GlobalEngine->Height * 0.5f;
-        m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
-        */
-
         Player.Init(&Gfx);
+        Boss.Init(&Gfx);
 
         /*
         RenderEntity BossShipData = {};
@@ -116,6 +163,9 @@ struct UBGameImpl
     }
     bool Term()
     {
+        Player.Term(&Gfx);
+        Boss.Term(&Gfx);
+
         bool bResult = Gfx.Term();
         return bResult;
     }

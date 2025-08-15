@@ -1,6 +1,8 @@
 #ifndef INPUT_H
 #define INPUT_H
 
+// TODO: Make these non-static
+
 struct KeyboardState
 {
     static constexpr int MaxNumKeys = 8;

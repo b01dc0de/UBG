@@ -127,6 +127,13 @@ bool fIsZero(f32 A)
     return fabsf(A) < fEpsilon;
 }
 
+float Clamp(f32 Min, float Max, float C)
+{
+    if (C < Min) { return Min; }
+    if (C > Max) { return Max; }
+    return C;
+}
+
 v2f Add(v2f A, v2f B)
 {
     v2f Result = { A.X + B.X, A.Y + B.Y };
