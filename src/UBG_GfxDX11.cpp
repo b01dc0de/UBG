@@ -13,13 +13,17 @@ void SafeRelease(IUnknown* Ptr)
     }
 }
 
-void DrawStateT::Bind(UBG_GfxContextT* Context, GfxSystem* System)
+
+void DrawStateT::Bind(GfxSystem* System)
 {
-    Bind(Context, System, 0, nullptr, 0, nullptr);
+    Bind(System, 0, nullptr, 0, nullptr);
 }
 
-void DrawStateT::Bind(UBG_GfxContextT* Context, GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers)
+void DrawStateT::Bind(GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers)
 {
+    ASSERT(System && System->GfxBackend && System->GfxBackend->Context);
+    UBG_GfxContextT* Context = System->GfxBackend->Context;
+
     Context->IASetInputLayout(InputLayout);
     Context->VSSetShader(VertexShader, nullptr, 0);
     Context->PSSetShader(PixelShader, nullptr, 0);
@@ -189,7 +193,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
             pMesh->Bind(Context);
             DrawStateT* pDrawColor = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Color]);
             ASSERT(pDrawColor);
-            pDrawColor->Bind(Context, System);
+            pDrawColor->Bind(System);
             pMesh->Draw(Context);
         } break;
         case DrawType::Texture:
@@ -201,7 +205,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
             TextureStateT* pTexture = System->Textures.Get(TextureState.idTexture);
             ASSERT(pTexture);
             SamplerStateT* pSampler = System->Samplers.Get(TextureState.idSampler);
-            pDrawTexture->Bind(Context, System, 1u, &pTexture->SRV, 1u, pSampler);
+            pDrawTexture->Bind(System, 1u, &pTexture->SRV, 1u, pSampler);
             pMesh->Draw(Context);
         } break;
         case DrawType::Unicolor:
@@ -214,7 +218,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
             v4f UnicolorBufferData[4] = { UnicolorState.Color };
             Context->UpdateSubresource(*pUnicolorBuffer, 0, nullptr, UnicolorBufferData, (u32)sizeof(UnicolorBufferData), 0);
             pMesh->Bind(Context);
-            pDrawUnicolor->Bind(Context, System);
+            pDrawUnicolor->Bind(System);
             pMesh->Draw(Context);
         } break;
         default:

@@ -40,7 +40,6 @@ using DrawStateID = TypeID;
 
 // Forward declare GfxSystem:
 struct GfxSystem;
-// TODO(Chris): We probably just want to pass GfxSystem in rather than UBG_GfxContextT for the ensuing function signatures...
 
 struct DrawStateT
 {
@@ -56,8 +55,8 @@ struct DrawStateT
     u32 NumSamplers;
     ShaderBufferID idsConstantBuffers[MaxConstantBuffers];
 
-    void Bind(UBG_GfxContextT* Context, GfxSystem* System);
-    void Bind(UBG_GfxContextT* Context, GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers);
+    void Bind(GfxSystem* System);
+    void Bind(GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers);
     void SafeRelease();
 };
 
