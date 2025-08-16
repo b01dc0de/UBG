@@ -21,8 +21,8 @@ void DrawStateT::Bind(GfxSystem* System)
 
 void DrawStateT::Bind(GfxSystem* System, u32 InNumShaderRVs, ID3D11ShaderResourceView** ShaderRVs, u32 InNumSamplers, ID3D11SamplerState** Samplers)
 {
-    ASSERT(System && System->GfxBackend && System->GfxBackend->Context);
-    UBG_GfxContextT* Context = System->GfxBackend->Context;
+    ASSERT(System && System->Backend && System->Backend->Context);
+    UBG_GfxContextT* Context = System->Backend->Context;
 
     Context->IASetInputLayout(InputLayout);
     Context->VSSetShader(VertexShader, nullptr, 0);
@@ -153,9 +153,10 @@ void RenderEntitySystem::Destroy(RenderEntityID ID)
     Entities.Destroy(ID);
 }
 
-void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context, GfxSystem* System)
+void RenderEntitySystem::DrawAll(GfxSystem* System)
 {
-    ASSERT(System);
+    ASSERT(System && System->Backend && System->Backend->Context);
+    UBG_GfxContextT* Context = System->Backend->Context;
     ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
     ASSERT(pViewProjBuffer);
     Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
@@ -165,23 +166,25 @@ void RenderEntitySystem::DrawAll(UBG_GfxContextT* Context, GfxSystem* System)
     {
         if (Entities.ActiveList[Idx].bVisible)
         {
-            Entities.ActiveList[Idx].Draw(Context, System);
+            Entities.ActiveList[Idx].Draw(System);
         }
     }
 }
 
-void RenderEntity::UpdateWorld(UBG_GfxContextT* Context, GfxSystem* System)
+void RenderEntity::UpdateWorld(GfxSystem* System)
 {
-    ASSERT(System);
+    ASSERT(System && System->Backend && System->Backend->Context);
+    UBG_GfxContextT* Context = System->Backend->Context;
     ShaderBufferT* pWorldBuffer = System->ShaderBuffers.Get(System->idWorldBuffer);
     ASSERT(pWorldBuffer);
     Context->UpdateSubresource(*pWorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
 }
 
-void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
+void RenderEntity::Draw(GfxSystem* System)
 {
     ASSERT(bVisible);
-
+    ASSERT(System && System->Backend && System->Backend->Context);
+    UBG_GfxContextT* Context = System->Backend->Context;
     MeshStateT* pMesh = System->Meshes.Get(idMesh);
     ASSERT(pMesh);
 
@@ -189,7 +192,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
     {
         case DrawType::Color:
         {
-            UpdateWorld(Context, System);
+            UpdateWorld(System);
             pMesh->Bind(Context);
             DrawStateT* pDrawColor = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Color]);
             ASSERT(pDrawColor);
@@ -198,7 +201,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
         } break;
         case DrawType::Texture:
         {
-            UpdateWorld(Context, System);
+            UpdateWorld(System);
             pMesh->Bind(Context);
             DrawStateT* pDrawTexture = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Texture]);
             ASSERT(pDrawTexture);
@@ -210,7 +213,7 @@ void RenderEntity::Draw(UBG_GfxContextT* Context, GfxSystem* System)
         } break;
         case DrawType::Unicolor:
         {
-            UpdateWorld(Context, System);
+            UpdateWorld(System);
             ShaderBufferT* pUnicolorBuffer = System->ShaderBuffers.Get(System->idUnicolorBuffer);
             ASSERT(pUnicolorBuffer);
             DrawStateT* pDrawUnicolor = System->DrawStates.Get(System->idsDrawState[(DrawStateID)DrawType::Unicolor]);
@@ -250,7 +253,7 @@ void UBG_Gfx_DX11::DrawEnd()
 void UBG_Gfx_DX11::Draw()
 {
     DrawBegin();
-    GlobalEngine->Instance->Draw(Context);
+    GlobalEngine->Instance->Draw();
     DrawEnd();
 }
 
@@ -626,7 +629,7 @@ MeshStateT CreateMeshState
 bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 {
     ASSERT(_GfxBackend);
-    GfxBackend = _GfxBackend;
+    Backend = _GfxBackend;
 
     Entities = {};
     Entities.Init();
@@ -661,7 +664,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         DefaultSamplerDesc.AddressW = Mode;
 
         SamplerStateT DefaultSamplerState = {};
-        GfxBackend->Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
+        Backend->Device->CreateSamplerState(&DefaultSamplerDesc, &DefaultSamplerState);
         idDefaultSampler = Samplers.Create(DefaultSamplerState);
     }
 
@@ -680,12 +683,12 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         CommonBufferDesc.CPUAccessFlags = 0;
 
         ShaderBufferT WorldBuffer = {};
-        GfxBackend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &WorldBuffer);
+        Backend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &WorldBuffer);
         idWorldBuffer = ShaderBuffers.Create(WorldBuffer);
 
         ShaderBufferT ViewProjBuffer = {};
         CommonBufferDesc.ByteWidth = sizeof(m4f) * 2;
-        GfxBackend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
+        Backend->Device->CreateBuffer(&CommonBufferDesc, nullptr, &ViewProjBuffer);
         idViewProjBuffer = ShaderBuffers.Create(ViewProjBuffer);
     }
 
@@ -701,7 +704,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
         DrawStateT DrawColor = CreateDrawState
         (
-            GfxBackend->Device,
+            Backend->Device,
             "src/hlsl/BaseShaderColor.hlsl",
             DefaultDefines,
             InputElements,
@@ -722,7 +725,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
         DrawStateT DrawTexture = CreateDrawState
         (
-            GfxBackend->Device,
+            Backend->Device,
             "src/hlsl/BaseShaderTexture.hlsl",
             DefaultDefines,
             InputElements,
@@ -741,7 +744,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         UnicolorBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         UnicolorBufferDesc.CPUAccessFlags = 0;
         ShaderBufferT UnicolorBuffer = {};
-        GfxBackend->Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
+        Backend->Device->CreateBuffer(&UnicolorBufferDesc, nullptr, &UnicolorBuffer);
         idUnicolorBuffer = ShaderBuffers.Create(UnicolorBuffer);
 
         ShaderBufferID idsCBuffers[] = { idsWVPBuffers[0], idsWVPBuffers[1], idUnicolorBuffer};
@@ -753,7 +756,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
         DrawStateT DrawUnicolor = CreateDrawState
         (
-            GfxBackend->Device,
+            Backend->Device,
             "src/hlsl/BaseShaderUnicolor.hlsl",
             DefaultDefines,
             InputElements,
@@ -838,7 +841,7 @@ MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* V
 {
     MeshStateT NewMesh = CreateMeshState
     (
-        GfxBackend->Device,
+        Backend->Device,
         VertexSize,
         NumVertices,
         VertexData,
@@ -872,8 +875,8 @@ TextureStateID GfxSystem::CreateTexture(ImageT* Image)
     TextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
     TextureStateT NewTexture = {};
-    GfxBackend->Device->CreateTexture2D(&TextureDesc, &TextureResDataDesc[0], &NewTexture.Texture);
-    GfxBackend->Device->CreateShaderResourceView(NewTexture.Texture, nullptr, &NewTexture.SRV);
+    Backend->Device->CreateTexture2D(&TextureDesc, &TextureResDataDesc[0], &NewTexture.Texture);
+    Backend->Device->CreateShaderResourceView(NewTexture.Texture, nullptr, &NewTexture.SRV);
     return Textures.Create(NewTexture);
 }
 

@@ -157,9 +157,9 @@ struct UBGameImpl
     {
         Player.Update(&Gfx);
     }
-    void Draw(UBG_GfxContextT* Context)
+    void Draw()
     {
-        Gfx.Entities.DrawAll(Context, &Gfx);
+        Gfx.Entities.DrawAll(&Gfx);
     }
     bool Term()
     {
@@ -286,9 +286,9 @@ struct UBGameImplDemo
     void Update()
     {
     }
-    void Draw(UBG_GfxContextT* Context)
+    void Draw()
     {
-        System.Entities.DrawAll(Context, &System);
+        System.Entities.DrawAll(&System);
     }
     bool Term()
     {
@@ -299,12 +299,11 @@ struct UBGameImplDemo
 
 #define RUN_DEMO() (0)
 #if RUN_DEMO()
-UBGameImplDemo* Impl = nullptr;
 using UBGameImplT = UBGameImplDemo;
 #else
-UBGameImpl* Impl = nullptr;
 using UBGameImplT = UBGameImpl;
 #endif // RUN_DEMO()
+UBGameImplT* Impl = nullptr;
 
 bool UBGame::Init()
 {
@@ -324,7 +323,7 @@ void UBGame::Update()
     Impl->Update();
 }
 
-void UBGame::Draw(UBG_GfxContextT* Context)
+void UBGame::Draw()
 {
-    Impl->Draw(Context);
+    Impl->Draw();
 }

@@ -118,8 +118,8 @@ struct RenderEntity
         DrawUnicolorState UnicolorState;
     };
 
-    void UpdateWorld(UBG_GfxContextT* Context, GfxSystem* System);
-    void Draw(UBG_GfxContextT* Context, GfxSystem* System);
+    void UpdateWorld(GfxSystem* System);
+    void Draw(GfxSystem* System);
 };
 
 struct RenderEntitySystem
@@ -132,12 +132,12 @@ struct RenderEntitySystem
     RenderEntityID Create();
     RenderEntityID Create(RenderEntity InitData);
     void Destroy(RenderEntityID ID);
-    void DrawAll(UBG_GfxContextT* Context, GfxSystem* System);
+    void DrawAll(GfxSystem* System);
 };
 
 struct GfxSystem
 {
-    UBG_GfxT* GfxBackend;
+    UBG_GfxT* Backend;
 
     RenderEntitySystem Entities;
 

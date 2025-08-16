@@ -6,7 +6,7 @@ struct UBGame
     bool Init();
     bool Term();
     void Update();
-    void Draw(UBG_GfxContextT* Context);
+    void Draw();
 };
 
 #endif // UBGAME_H
