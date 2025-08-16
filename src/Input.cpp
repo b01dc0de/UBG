@@ -1,7 +1,5 @@
 #include "UBG.h" // Includes Input.h
 
-int KeyboardState::KeysPressed[] = { };
-
 bool KeyboardState::GetKey(int KeyCode)
 {
     for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)
@@ -47,11 +45,22 @@ void KeyboardState::SetKeyDown(int Key)
     }
 }
 
-int MouseState::MouseX = {};
-int MouseState::MouseY = {};
-bool MouseState::bOffscreen = {};
-int MouseState::LeftButton = {};
-int MouseState::RightButton = {};
+KeyboardState::KeyboardState()
+{
+    for (int Idx = 0; Idx < MaxNumKeys; Idx++)
+    {
+        KeysPressed[Idx] = 0;
+    }
+}
+
+MouseState::MouseState()
+{
+    MouseX = {};
+    MouseY = {};
+    bOffscreen = {};
+    LeftButton = {};
+    RightButton = {};
+}
 
 void MouseState::SetMousePos(int X, int Y, bool _bOffscreen)
 {

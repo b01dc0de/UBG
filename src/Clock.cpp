@@ -1,15 +1,15 @@
 #include "UBG.h" // Includes Clock.h
 
-u64 ClockT::Freq = {};
-u64 ClockT::Epoch = {};
-u64 ClockT::CurrTs= {};
-f64 ClockT::CurrTime = {};
-f64 ClockT::LastFrameDuration = {};
-
 static_assert(UBG_PLATFORM_IMPL_WIN32(), "[build] ClockT isn't implemented for non-Win32 platforms! (yet)");
 
-void ClockT::Init()
+ClockT::ClockT()
 {
+    Freq = {};
+    Epoch = {};
+    CurrTs = {};
+    CurrTime = {};
+    LastFrameDuration = {};
+
     LARGE_INTEGER Timestamp = {};
     QueryPerformanceFrequency(&Timestamp);
     Freq = Timestamp.QuadPart;

@@ -37,18 +37,19 @@ struct PlayerShip
 
     void Update(GfxSystem* Gfx)
     {
-        bool bKeyW = KeyboardState::GetKey('W');
-        bool bKeyA = KeyboardState::GetKey('A');
-        bool bKeyS = KeyboardState::GetKey('S');
-        bool bKeyD = KeyboardState::GetKey('D');
-        constexpr float fSpeed = 00.1f;
+        bool bKeyW = GlobalEngine->Input->Keyboard.GetKey('W');
+        bool bKeyA = GlobalEngine->Input->Keyboard.GetKey('A');
+        bool bKeyS = GlobalEngine->Input->Keyboard.GetKey('S');
+        bool bKeyD = GlobalEngine->Input->Keyboard.GetKey('D');
+        constexpr f32 fSpeed = 100.1f;
+        f32 AdjSpeed = fSpeed * (f32)GlobalEngine->Clock->LastFrameDuration;
         if (bKeyW != bKeyS)
         {
-            Pos.Y += bKeyW ? fSpeed : -fSpeed;
+            Pos.Y += bKeyW ? AdjSpeed : -AdjSpeed;
         }
         if (bKeyA != bKeyD)
         {
-            Pos.X += bKeyD ? fSpeed : -fSpeed;
+            Pos.X += bKeyD ? AdjSpeed : -AdjSpeed;
         }
         float HalfScale = Scale * 0.5f;
         float HalfWidth = GlobalEngine->Width * 0.5f;
@@ -56,9 +57,9 @@ struct PlayerShip
         Pos.X = Clamp(0.0f + HalfScale - HalfWidth, GlobalEngine->Width - HalfScale - HalfWidth, Pos.X);
         Pos.Y = Clamp(0.0f + HalfScale - HalfHeight, GlobalEngine->Height - HalfScale - HalfHeight, Pos.Y);
 
-        if (!MouseState::bOffscreen)
+        if (!GlobalEngine->Input->Mouse.bOffscreen)
         {
-            v2f MousePos = { MouseState::MouseX - HalfWidth, MouseState::MouseY - HalfHeight };
+            v2f MousePos = { GlobalEngine->Input->Mouse.MouseX - HalfWidth, GlobalEngine->Input->Mouse.MouseY - HalfHeight };
             v2f Diff = { MousePos.X - Pos.X, MousePos.Y + Pos.Y };
             if (fIsZero(Length(Diff)))
             {

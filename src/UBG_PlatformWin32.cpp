@@ -24,9 +24,9 @@ void HandleKeyboardInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
         case WM_SYSKEYDOWN:
-        case WM_KEYDOWN: { KeyboardState::SetKeyDown((int)wParam); } break;
+        case WM_KEYDOWN: { GlobalEngine->Input->Keyboard.SetKeyDown((int)wParam); } break;
         case WM_SYSKEYUP:
-        case WM_KEYUP: { KeyboardState::SetKeyUp((int)wParam); } break;
+        case WM_KEYUP: { GlobalEngine->Input->Keyboard.SetKeyUp((int)wParam); } break;
         default:
         {
             ASSERT(false);
@@ -44,27 +44,27 @@ void HandleMouseInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
             // NOTE: This code is taken from Windowsx.h GET_X/Y_LPARAM(...)
             int X = ((int)(short)LOWORD(lParam));
             int Y = ((int)(short)HIWORD(lParam));
-            MouseState::SetMousePos(X, Y, false);
+            GlobalEngine->Input->Mouse.SetMousePos(X, Y, false);
         } break;
         case WM_MOUSELEAVE:
         {
-            MouseState::SetMousePos(0, 0, true);
+            GlobalEngine->Input->Mouse.SetMousePos(0, 0, true);
         } break;
         case WM_LBUTTONDOWN:
         {
-            MouseState::SetLeftButton(true);
+            GlobalEngine->Input->Mouse.SetLeftButton(true);
         } break;
         case WM_LBUTTONUP:
         {
-            MouseState::SetLeftButton(false);
+            GlobalEngine->Input->Mouse.SetLeftButton(false);
         } break;
         case WM_RBUTTONDOWN:
         {
-            MouseState::SetRightButton(true);
+            GlobalEngine->Input->Mouse.SetRightButton(true);
         } break;
         case WM_RBUTTONUP:
         {
-            MouseState::SetRightButton(false);
+            GlobalEngine->Input->Mouse.SetRightButton(false);
         } break;
         default:
         {
@@ -73,10 +73,11 @@ void HandleMouseInput_Win32(u32 uMsg, WPARAM wParam, LPARAM lParam)
     }
 }
 
-// TODO: Move this static var
-static WINDOWPLACEMENT WindowPlacement = { sizeof(WindowPlacement) };
 void ToggleFullscreen(HWND Window)
 {
+    // TODO: Move this static var
+    static WINDOWPLACEMENT WindowPlacement = { sizeof(WindowPlacement) };
+
     // NOTE: From Raymond Chen on MSDN
     // https://devblogs.microsoft.com/oldnewthing/20100412-00/?p=14353
 

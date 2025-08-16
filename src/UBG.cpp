@@ -2,7 +2,7 @@
 
 void UBG_Engine::GameLoop()
 {
-    ClockT::Tick();
+    Clock->Tick();
     PlatformState->Tick();
     Instance->Update();
     GfxState->Draw();
@@ -16,13 +16,17 @@ bool UBG_Engine::Init()
     GfxState = new UBG_GfxT{};
 
     bool bResult = PlatformState->Init() && GfxState->Init();
-    ClockT::Init();
+    Clock = new ClockT{};
+    Input = new InputT{};
 
     return bResult;
 }
 
 bool UBG_Engine::Term()
 {
+    delete Clock;
+    delete Input;
+
     bool bResult = GfxState->Term() && PlatformState->Term();
     
     delete GfxState;

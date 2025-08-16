@@ -434,7 +434,7 @@ void GetClearColor(v4f& OutClearColor)
             constexpr float StepDurationSeconds = 2.0f;
             constexpr size_t NumColors = ARRAY_SIZE(Colors);
 
-            float CurrTime = (float)ClockT::CurrTime;
+            float CurrTime = (float)GlobalEngine->Clock->CurrTime;
             float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
             int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
             OutClearColor = Lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
@@ -447,7 +447,7 @@ void GetClearColor(v4f& OutClearColor)
             static float LastSwitchTime = 0.0f;
             constexpr float StepDurationSeconds = 2.0f;
 
-            float CurrTime = (float)ClockT::CurrTime;
+            float CurrTime = (float)GlobalEngine->Clock->CurrTime;
             if (CurrTime - LastSwitchTime > StepDurationSeconds)
             {
                 LastSwitchTime = CurrTime;

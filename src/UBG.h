@@ -25,6 +25,8 @@ struct UBG_Engine
     UBG_PlatformT* PlatformState;
     UBG_GfxT* GfxState;
     struct UBGame* Instance;
+    struct ClockT* Clock;
+    struct InputT* Input;
 
     void GameLoop();
     bool Init();

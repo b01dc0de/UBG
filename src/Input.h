@@ -1,29 +1,35 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-// TODO: Make these non-static
-
 struct KeyboardState
 {
     static constexpr int MaxNumKeys = 8;
-    static int KeysPressed[MaxNumKeys];
+    int KeysPressed[MaxNumKeys];
 
-    static bool GetKey(int KeyCode);
-    static void SetKeyUp(int KeyCode);
-    static void SetKeyDown(int KeyCode);
+    bool GetKey(int KeyCode);
+    void SetKeyUp(int KeyCode);
+    void SetKeyDown(int KeyCode);
+    KeyboardState();
 };
 
 struct MouseState
 {
-    static int MouseX;
-    static int MouseY;
-    static bool bOffscreen;
-    static int LeftButton;
-    static int RightButton;
+    int MouseX;
+    int MouseY;
+    bool bOffscreen;
+    int LeftButton;
+    int RightButton;
 
-    static void SetMousePos(int X, int Y, bool bOffscreen);
-    static void SetLeftButton(bool bDown);
-    static void SetRightButton(bool bDown);
+    void SetMousePos(int X, int Y, bool bOffscreen);
+    void SetLeftButton(bool bDown);
+    void SetRightButton(bool bDown);
+    MouseState();
+};
+
+struct InputT
+{
+    KeyboardState Keyboard;
+    MouseState Mouse;
 };
 
 #endif // INPUT_H
