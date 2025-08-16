@@ -14,9 +14,6 @@ struct MemBlock
 struct MemPool
 {
     static constexpr size_t MaxBlocks = 1024;
-#if _DEBUG
-    static constexpr bool bDebugPrint = false;
-#endif // _DEBUG
 
     size_t DataSize;
     void* DataPool;
@@ -27,6 +24,13 @@ struct MemPool
     MemBlock FreeBlocks[MaxBlocks];
     size_t TotalAllocSize;
     size_t TotalFreeSize;
+
+#if _DEBUG
+    static constexpr bool bDebugPrint = false;
+    size_t TotalNumAllocs;
+    size_t TotalNumFrees;
+    size_t MaxBytesUsed;
+#endif // _DEBUG
 
     void Init(size_t Size)
     {
@@ -44,20 +48,29 @@ struct MemPool
 
         TotalAllocSize = 0;
         TotalFreeSize = Size;
+
+    #if _DEBUG
+        TotalNumAllocs = 0;
+        TotalNumFrees = 0;
+        MaxBytesUsed = 0;
+    #endif // _DEBUG
     }
 
     void Term()
     {
         ASSERT(DataSize && DataPool);
 
-        #if _DEBUG
+    #if _DEBUG
         static bool bPrintOnTerm = true;
         if (bDebugPrint || bPrintOnTerm)
         {
             Outf("[memory][debug] Terminating...\n");
+            Outf("\tNum allocs / frees: %llu / %llu\n", TotalNumAllocs, TotalNumFrees);
+            double MaxBytesUsedPercent = (double)MaxBytesUsed / (double)DataSize * 100.0;
+            Outf("\tMax bytes used: %llu (%0.2f%%)\n", MaxBytesUsed, MaxBytesUsedPercent);
             DebugPrint(true);
         }
-        #endif // _DEBUG
+    #endif // _DEBUG
 
         DataSize = 0;
         free(DataPool);
@@ -157,6 +170,11 @@ struct MemPool
             }
 
         #if _DEBUG
+            TotalNumAllocs++;
+            if (TotalAllocSize > MaxBytesUsed)
+            {
+                MaxBytesUsed = TotalAllocSize;
+            }
             if (bDebugPrint)
             {
                 Outf("[memory][debug] Alloc'd new ptr (%llu bytes) at 0x%X\n", NewAlloc.Size, NewAlloc.Data);
@@ -307,6 +325,7 @@ struct MemPool
         }
 
     #if _DEBUG
+        TotalNumFrees++;
         if (bDebugPrint)
         {
             Outf("[memory][debug] Free'd 0x%X\n", Ptr);
