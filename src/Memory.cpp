@@ -13,15 +13,14 @@ struct MemBlock
 
 struct MemPool
 {
-    static constexpr size_t MaxBlocks = 1024;
+    static constexpr size_t MaxBlocks = 2048;
 
     size_t DataSize;
     void* DataPool;
-
-    size_t NumAlloc;
     MemBlock AllocBlocks[MaxBlocks];
-    size_t NumFree;
     MemBlock FreeBlocks[MaxBlocks];
+    size_t NumAlloc;
+    size_t NumFree;
     size_t TotalAllocSize;
     size_t TotalFreeSize;
 
@@ -85,6 +84,9 @@ struct MemPool
     void* Alloc(size_t Size)
     {
         ASSERT(DataSize && DataPool);
+
+        // NOTE: This forces blocks to be 16-bit aligned
+        Size = (Size + 0xF) & ~0xF;
 
         int FoundIdx = -1;
         for (int FreeIdx = 0; FreeIdx < NumFree; FreeIdx++)
