@@ -20,8 +20,9 @@ extern void DebugBreakpoint();
 struct UBG_Engine
 {
     bool bRunning;
-    int Width;
-    int Height;
+    s32 Width;
+    s32 Height;
+    u64 FrameNo;
     UBG_PlatformT* PlatformState;
     UBG_GfxT* GfxState;
     struct UBGame* Instance;
