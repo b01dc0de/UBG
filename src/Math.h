@@ -12,6 +12,10 @@ v2f Add(v2f A, v2f B);
 v3f Add(v3f A, v3f B);
 v2f Subtract(v2f A, v2f B);
 v3f Subtract(v3f A, v3f B);
+v2f operator+(v2f A, v2f B);
+v3f operator+(v3f A, v3f B);
+v2f operator-(v2f A, v2f B);
+v3f operator-(v3f A, v3f B);
 
 float LengthSq(v2f V);
 float LengthSq(v3f V);

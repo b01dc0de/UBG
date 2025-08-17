@@ -158,6 +158,26 @@ v3f Subtract(v3f A, v3f B)
     return Result;
 }
 
+v2f operator+(v2f A, v2f B)
+{
+    return Add(A, B);
+}
+
+v3f operator+(v3f A, v3f B)
+{
+    return Add(A, B);
+}
+
+v2f operator-(v2f A, v2f B)
+{
+    return Subtract(A, B);
+}
+
+v3f operator-(v3f A, v3f B)
+{
+    return Subtract(A, B);
+}
+
 float LengthSq(v2f V)
 {
     float Result = V.X * V.X + V.Y * V.Y;

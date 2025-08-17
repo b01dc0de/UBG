@@ -1,6 +1,8 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#include <string.h> // Needed for memcpy
+
 /*
     NOTE(Chris):
         - SArray is like a traditional c-array, no knowledge of it's current 'Num', fixed-size
@@ -157,18 +159,18 @@ struct DArray
     }
 
     /* NOTE: Preserves item order */
-    void Remove(size_t RemovalIdx)
-    {
-        ASSERT(RemovalIdx < Num);
-        for (size_t Idx = RemovalIdx; (Idx + 1) < Num; Idx++)
-        {
-            Data[Idx] = Data[Idx + 1];
-        }
-        Data[--Num] = {};
-    }
+    //void Remove(size_t RemovalIdx)
+    //{
+    //    ASSERT(RemovalIdx < Num);
+    //    for (size_t Idx = RemovalIdx; (Idx + 1) < Num; Idx++)
+    //    {
+    //        Data[Idx] = Data[Idx + 1];
+    //    }
+    //    Data[--Num] = {};
+    //}
 
     /* Note: Does not preserve order */
-    void RemoveQ(size_t RemovalIdx)
+    void Remove(size_t RemovalIdx)
     {
         ASSERT(RemovalIdx <= Num);
         if (Num)
