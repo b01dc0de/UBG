@@ -827,6 +827,11 @@ bool GfxSystem::Term()
     return true;
 }
 
+RenderEntity* GfxSystem::GetEntity(RenderEntityID ID)
+{
+    return Entities.Get(ID);
+}
+
 RenderEntityID GfxSystem::CreateEntity(RenderEntity EntityState)
 {
     return Entities.Create(EntityState);
@@ -835,6 +840,11 @@ RenderEntityID GfxSystem::CreateEntity(RenderEntity EntityState)
 void GfxSystem::DestroyEntity(RenderEntityID ID)
 {
     Entities.Destroy(ID);
+}
+
+MeshStateT* GfxSystem::GetMesh(MeshStateID ID)
+{
+    return Meshes.Get(ID);
 }
 
 MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
@@ -854,6 +864,11 @@ MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* V
 void GfxSystem::DestroyMesh(MeshStateID ID)
 {
     Meshes.Destroy(ID);
+}
+
+TextureStateT* GfxSystem::GetTexture(TextureStateID ID)
+{
+    return Textures.Get(ID);
 }
 
 TextureStateID GfxSystem::CreateTexture(ImageT* Image)

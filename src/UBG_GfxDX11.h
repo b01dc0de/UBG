@@ -162,10 +162,13 @@ struct GfxSystem
     bool Init(UBG_GfxT* _GfxBackend);
     bool Term();
 
+    RenderEntity* GetEntity(RenderEntityID ID);
     RenderEntityID CreateEntity(RenderEntity EntityState);
     void DestroyEntity(RenderEntityID ID);
+    MeshStateT* GetMesh(MeshStateID ID);
     MeshStateID CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
     void DestroyMesh(MeshStateID ID);
+    TextureStateT* GetTexture(TextureStateID ID);
     TextureStateID CreateTexture(ImageT* Image);
     void DestroyTexture(TextureStateID ID);
 };

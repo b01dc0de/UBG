@@ -42,7 +42,7 @@ struct PerBulletData
 
 struct BulletManager
 {
-    static constexpr bool bDebugPrint = true;
+    static constexpr bool bDebugPrint = false;
     static constexpr int MaxBullets = 64;
     static constexpr v4f PlayerBulletColor = { 0.0f, 1.0f, 0.0f, 1.0f };
     static constexpr v4f BossBulletColor = { 1.0f, 0.0f, 0.0f, 1.0f };
@@ -87,16 +87,18 @@ void PlayerShip::Init(UBGameImpl* Game)
     PlayerShipData.Type = DrawType::Texture;
     PlayerShipData.idMesh = Game->Gfx.idQuadTexture;
     idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
+    ASSERT(idShipTexture);
     PlayerShipData.TextureState.idTexture = idShipTexture;
     PlayerShipData.TextureState.idSampler = Game->Gfx.idDefaultSampler;
     idShip = Game->Gfx.CreateEntity(PlayerShipData);
+    ASSERT(idShip);
     delete[] PlayerShipTextureImage.PxBuffer;
 }
 
 void PlayerShip::Term(UBGameImpl* Game)
 {
     Game->Gfx.DestroyTexture(idShipTexture);
-    Game->Gfx.Entities.Destroy(idShip);
+    Game->Gfx.DestroyEntity(idShip);
 }
 
 void PlayerShip::Update(UBGameImpl* Game)
@@ -135,7 +137,7 @@ void PlayerShip::Update(UBGameImpl* Game)
         }
     }
 
-    RenderEntity* pRent = Game->Gfx.Entities.Get(idShip);
+    RenderEntity* pRent = Game->Gfx.GetEntity(idShip);
     ASSERT(pRent);
     pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
 
@@ -182,6 +184,7 @@ void BossShip::Init(UBGameImpl* Game)
             BossInds[BaseIdx + 2] = TriIdx + 1;
         }
         idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
+        ASSERT(idShipMesh);
     }
 
     RenderEntity BossShipData = {};
@@ -191,12 +194,13 @@ void BossShip::Init(UBGameImpl* Game)
     BossShipData.idMesh = idShipMesh;
     BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
     idShip = Game->Gfx.CreateEntity(BossShipData);
+    ASSERT(idShip);
 }
 
 void BossShip::Term(UBGameImpl* Game)
 {
-    Game->Gfx.Entities.Destroy(idShip);
-    Game->Gfx.Meshes.Destroy(idShipMesh);
+    Game->Gfx.DestroyEntity(idShip);
+    Game->Gfx.DestroyMesh(idShipMesh);
 }
 
 void BossShip::Update(UBGameImpl* Game)
@@ -254,7 +258,7 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
                 Vel
             };
             ActiveBullets.Add(NewBullet);
-            RenderEntity* BulletRE = Game->Gfx.Entities.Get(NewID);
+            RenderEntity* BulletRE = Game->Gfx.GetEntity(NewID);
             ASSERT(BulletRE);
             BulletRE->bVisible = true;
             BulletRE->World = m4f::Identity();
@@ -279,7 +283,7 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
             REBulletData.Type = DrawType::Unicolor;
             REBulletData.idMesh = idBulletMesh;
             REBulletData.UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
-            RenderEntityID NewID = Game->Gfx.Entities.Create(REBulletData);
+            RenderEntityID NewID = Game->Gfx.CreateEntity(REBulletData);
             if (NewID == 0)
             {
                 DebugBreak();
@@ -341,14 +345,14 @@ void BulletManager::Init(UBGameImpl* Game)
 
 void BulletManager::Term(UBGameImpl* Game)
 {
-    Game->Gfx.Meshes.Destroy(idBulletMesh);
+    Game->Gfx.DestroyMesh(idBulletMesh);
     for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
     {
-        Game->Gfx.Entities.Destroy(ActiveBullets[Idx].ID);
+        Game->Gfx.DestroyEntity(ActiveBullets[Idx].ID);
     }
     for (size_t Idx = 0; Idx < InactiveBullets.Num; Idx++)
     {
-        Game->Gfx.Entities.Destroy(InactiveBullets[Idx]);
+        Game->Gfx.DestroyEntity(InactiveBullets[Idx]);
     }
 }
 
@@ -361,7 +365,7 @@ void BulletManager::Update(UBGameImpl* Game)
         v2f AdjVel = { Bullet.Vel.X * dt, Bullet.Vel.Y * dt };
         Bullet.Pos = Bullet.Pos + AdjVel;
 
-        RenderEntity* BulletRE = Game->Gfx.Entities.Get(Bullet.ID);
+        RenderEntity* BulletRE = Game->Gfx.GetEntity(Bullet.ID);
         ASSERT(BulletRE);
         if (IsOffscreen(Bullet))
         {
