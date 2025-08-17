@@ -1,5 +1,7 @@
 #include "UBG.h" // Includes UBGame.h
 
+struct UBGameImpl;
+
 struct PlayerShip
 {
     TextureStateID idShipTexture;
@@ -8,15 +10,72 @@ struct PlayerShip
     float Scale;
     float Angle;
 
-    void Init(GfxSystem* Gfx);
-    void Term(GfxSystem* Gfx);
-    void Update(GfxSystem* Gfx);
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
 };
 
-void PlayerShip::Init(GfxSystem* Gfx)
+struct BossShip
+{
+    MeshStateID idShipMesh;
+    RenderEntityID idShip;
+
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
+};
+
+enum struct BulletType
+{
+    Player,
+    Boss,
+    Count
+};
+
+struct PerBulletData
+{
+    RenderEntityID ID;
+    BulletType Type;
+    v2f Pos;
+    v2f Vel;
+};
+
+struct BulletManager
+{
+    static constexpr bool bDebugPrint = true;
+    static constexpr int MaxBullets = 64;
+    static constexpr v4f PlayerBulletColor = { 0.0f, 1.0f, 0.0f, 1.0f };
+    static constexpr v4f BossBulletColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+    MeshStateID idBulletMesh;
+    DArray<PerBulletData> ActiveBullets;
+    DArray<RenderEntityID> InactiveBullets;
+
+    static bool IsOffscreen(PerBulletData& Bullet);
+    void NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel);
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
+};
+
+struct UBGameImpl
+{
+    GfxSystem Gfx;
+
+    BulletManager BulletMgr;
+    PlayerShip Player;
+    BossShip Boss;
+
+    bool Init();
+    void Update();
+    void Draw();
+    bool Term();
+};
+
+void PlayerShip::Init(UBGameImpl* Game)
 {
     Pos = { (float)GlobalEngine->Width * -0.25f, (float)GlobalEngine->Height * +0.25f };
-    Scale = 100.0f;
+    Scale = 25.0f;
     Angle = 0.0f;
 
     ImageT PlayerShipTextureImage = {};
@@ -26,27 +85,27 @@ void PlayerShip::Init(GfxSystem* Gfx)
     PlayerShipData.bVisible = true;
     PlayerShipData.World = m4f::Identity();
     PlayerShipData.Type = DrawType::Texture;
-    PlayerShipData.idMesh = Gfx->idQuadTexture;
-    idShipTexture = Gfx->CreateTexture(&PlayerShipTextureImage);
+    PlayerShipData.idMesh = Game->Gfx.idQuadTexture;
+    idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
     PlayerShipData.TextureState.idTexture = idShipTexture;
-    PlayerShipData.TextureState.idSampler = Gfx->idDefaultSampler;
-    idShip = Gfx->CreateEntity(PlayerShipData);
+    PlayerShipData.TextureState.idSampler = Game->Gfx.idDefaultSampler;
+    idShip = Game->Gfx.CreateEntity(PlayerShipData);
     delete[] PlayerShipTextureImage.PxBuffer;
 }
 
-void PlayerShip::Term(GfxSystem* Gfx)
+void PlayerShip::Term(UBGameImpl* Game)
 {
-    Gfx->Entities.Destroy(idShipTexture);
-    Gfx->Entities.Destroy(idShip);
+    Game->Gfx.DestroyTexture(idShipTexture);
+    Game->Gfx.Entities.Destroy(idShip);
 }
 
-void PlayerShip::Update(GfxSystem* Gfx)
+void PlayerShip::Update(UBGameImpl* Game)
 {
     bool bKeyW = GlobalEngine->Input->Keyboard.GetKey('W');
     bool bKeyA = GlobalEngine->Input->Keyboard.GetKey('A');
     bool bKeyS = GlobalEngine->Input->Keyboard.GetKey('S');
     bool bKeyD = GlobalEngine->Input->Keyboard.GetKey('D');
-    constexpr f32 fSpeed = 100.1f;
+    constexpr f32 fSpeed = 1000.0f;
     f32 AdjSpeed = fSpeed * (f32)GlobalEngine->Clock->LastFrameDuration;
     if (bKeyW != bKeyS)
     {
@@ -76,23 +135,26 @@ void PlayerShip::Update(GfxSystem* Gfx)
         }
     }
 
-    RenderEntity* pRent = Gfx->Entities.Get(idShip);
+    RenderEntity* pRent = Game->Gfx.Entities.Get(idShip);
     ASSERT(pRent);
     pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
+
+    static f32 LastBulletSpawn = 0.0f;
+    static constexpr f32 SecondsPerBullet = 0.25f;
+    static constexpr f32 Speed = 25.0f;
+    f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
+    if (GlobalEngine->Input->Mouse.LeftButton)
+    {
+        if ((CurrTime - LastBulletSpawn) > SecondsPerBullet)
+        {
+            v2f Dir = { cosf(Angle) * Speed, -sinf(Angle) * Speed };
+            Game->BulletMgr.NewBullet(Game, BulletType::Player, Pos, Dir);
+            LastBulletSpawn = CurrTime;
+        }
+    }
 }
 
-struct BossShip
-{
-    RenderEntityID idShipMesh;
-    RenderEntityID idShip;
-
-    void Init(GfxSystem* Gfx);
-    void Term(GfxSystem* Gfx);
-    void Update(GfxSystem* Gfx);
-
-};
-
-void BossShip::Init(GfxSystem* Gfx)
+void BossShip::Init(UBGameImpl* Game)
 {
     constexpr u32 BossNumPoints = 32;
     constexpr size_t BossNumVerts = BossNumPoints + 1;
@@ -119,7 +181,7 @@ void BossShip::Init(GfxSystem* Gfx)
             BossInds[BaseIdx + 1] = TriIdx == BossNumTris - 1 ? 1 : TriIdx + 2;
             BossInds[BaseIdx + 2] = TriIdx + 1;
         }
-        idShipMesh = Gfx->CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
+        idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
     }
 
     RenderEntity BossShipData = {};
@@ -128,45 +190,218 @@ void BossShip::Init(GfxSystem* Gfx)
     BossShipData.Type = DrawType::Unicolor;
     BossShipData.idMesh = idShipMesh;
     BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
-    idShip = Gfx->CreateEntity(BossShipData);
+    idShip = Game->Gfx.CreateEntity(BossShipData);
 }
 
-void BossShip::Term(GfxSystem* Gfx)
+void BossShip::Term(UBGameImpl* Game)
 {
-    (void)Gfx;
+    Game->Gfx.Entities.Destroy(idShip);
+    Game->Gfx.Meshes.Destroy(idShipMesh);
 }
 
-void BossShip::Update(GfxSystem* Gfx)
+void BossShip::Update(UBGameImpl* Game)
 {
-    (void)Gfx;
+    static f32 LastBulletSpawn = 0.0f;
+    static constexpr f32 SecondsPerBullet = 2.5f;
+    static s32 SpawnDir = 0;
+    static constexpr f32 Speed = 50.0f;
+    f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
+    if ((CurrTime - LastBulletSpawn) > SecondsPerBullet)
+    {
+        v2f Dir = {};
+        switch (SpawnDir)
+        {
+            case 0: { Dir = { 0.0f, +Speed }; } break;
+            case 1: { Dir = { +Speed, +Speed }; } break;
+            case 2: { Dir = { +Speed, 0.0f }; } break;
+            case 3: { Dir = { +Speed, -Speed }; } break;
+            case 4: { Dir = { 0.0f, -Speed }; } break;
+            case 5: { Dir = { -Speed, -Speed }; } break;
+            case 6: { Dir = { -Speed, 0.0f }; } break;
+            case 7: { Dir = { -Speed, +Speed }; } break;
+        }
+        SpawnDir = (SpawnDir + 1) % 8;
+        Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
+        LastBulletSpawn = CurrTime;
+    }
 }
 
-struct UBGameImpl
+bool BulletManager::IsOffscreen(PerBulletData& Bullet)
 {
-    GfxSystem Gfx;
+    float HalfWidth = GlobalEngine->Width * 0.5f;
+    float HalfHeight = GlobalEngine->Height * 0.5f;
+    return Bullet.Pos.X < -HalfWidth || Bullet.Pos.X > +HalfWidth ||
+        Bullet.Pos.X < -HalfHeight || Bullet.Pos.Y > +HalfHeight;
+}
 
-    PlayerShip Player;
-    BossShip Boss;
+void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel)
+{
+    if (ActiveBullets.Num < MaxBullets)
+    {
+        if (InactiveBullets.Num)
+        {
+            RenderEntityID NewID = InactiveBullets[0];
+            if (NewID == 0)
+            {
+                DebugBreak();
+            }
+            InactiveBullets.Remove(0);
+            PerBulletData NewBullet =
+            {
+                NewID,
+                Type,
+                Pos,
+                Vel
+            };
+            ActiveBullets.Add(NewBullet);
+            RenderEntity* BulletRE = Game->Gfx.Entities.Get(NewID);
+            ASSERT(BulletRE);
+            BulletRE->bVisible = true;
+            BulletRE->World = m4f::Identity();
+            BulletRE->Type = DrawType::Unicolor;
+            BulletRE->idMesh = idBulletMesh;
+            BulletRE->UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
 
-    bool Init();
-    void Update();
-    void Draw();
-    bool Term();
-};
+            if (bDebugPrint)
+            {
+                Outf("[debug][BulletManager]: Recycled NewBullet\n");
+                Outf("\tRenderEntityID: %d\n", NewID);
+                Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
+                Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
+                Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
+            }
+        }
+        else
+        {
+            RenderEntity REBulletData = { };
+            REBulletData.bVisible = true;
+            REBulletData.World = m4f::Identity();
+            REBulletData.Type = DrawType::Unicolor;
+            REBulletData.idMesh = idBulletMesh;
+            REBulletData.UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
+            RenderEntityID NewID = Game->Gfx.Entities.Create(REBulletData);
+            if (NewID == 0)
+            {
+                DebugBreak();
+            }
+            PerBulletData NewBullet = { NewID, Type, Pos, Vel };
+            ActiveBullets.Add(NewBullet);
+            if (bDebugPrint)
+            {
+                Outf("[debug][BulletManager]: Created NewBullet\n");
+                Outf("\tRenderEntityID: %d\n", NewID);
+                Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
+                Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
+                Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
+            }
+        }
+    }
+    else
+    {
+        if (bDebugPrint)
+        {
+            Outf("[debug][BulletManager]: DIDN'T create NewBullet: MaxBullets reached\n");
+            Outf("\tWould be stats:\n");
+            Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
+            Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
+            Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
+        }
+    }
+
+}
+
+void BulletManager::Init(UBGameImpl* Game)
+{
+    // Bullet mesh:
+    {
+        constexpr u32 NumPoints = 8;
+        constexpr size_t NumVerts = NumPoints + 1;
+        constexpr size_t NumTris = NumPoints;
+        constexpr size_t NumInds = NumTris * 3;
+
+        VxMin Verts[NumVerts] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+        for (u32 Idx = 1; Idx < NumVerts; Idx++)
+        {
+            float Angle = (float)(Idx - 1) / (float)(NumVerts - 1) * fTAU;
+            Verts[Idx] = { cosf(Angle), sinf(Angle), 0.0f, 1.0f };
+        }
+
+        u32 Inds[NumTris * 3] = {};
+        for (u32 TriIdx = 0; TriIdx < NumTris; TriIdx++)
+        {
+            size_t BaseIdx = TriIdx * 3;
+            Inds[BaseIdx + 0] = 0;
+            Inds[BaseIdx + 1] = TriIdx == NumTris - 1 ? 1 : TriIdx + 2;
+            Inds[BaseIdx + 2] = TriIdx + 1;
+        }
+
+        idBulletMesh = Game->Gfx.CreateMesh(sizeof(VxMin), NumVerts, Verts, NumInds, Inds);
+    }
+}
+
+void BulletManager::Term(UBGameImpl* Game)
+{
+    Game->Gfx.Meshes.Destroy(idBulletMesh);
+    for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
+    {
+        Game->Gfx.Entities.Destroy(ActiveBullets[Idx].ID);
+    }
+    for (size_t Idx = 0; Idx < InactiveBullets.Num; Idx++)
+    {
+        Game->Gfx.Entities.Destroy(InactiveBullets[Idx]);
+    }
+}
+
+void BulletManager::Update(UBGameImpl* Game)
+{
+    for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
+    {
+        PerBulletData& Bullet = ActiveBullets[Idx];
+        f32 dt = (f32)GlobalEngine->Clock->LastFrameDuration;
+        v2f AdjVel = { Bullet.Vel.X * dt, Bullet.Vel.Y * dt };
+        Bullet.Pos = Bullet.Pos + AdjVel;
+
+        RenderEntity* BulletRE = Game->Gfx.Entities.Get(Bullet.ID);
+        ASSERT(BulletRE);
+        if (IsOffscreen(Bullet))
+        {
+            if (bDebugPrint)
+            {
+                Outf("[debug][BulletManager]: Despawned offscreen bullet\n");
+                Outf("\tRenderEntityID: %d\n", Bullet.ID);
+                Outf("\tType: %s\n", Bullet.Type == BulletType::Player ? "Player" : "Boss");
+                Outf("\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
+                Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
+            }
+            RenderEntityID idInactiveBullet = Bullet.ID;
+            BulletRE->bVisible = false;
+            ActiveBullets.Remove(Idx);
+            InactiveBullets.Add(idInactiveBullet);
+        }
+        else
+        {
+            float Scale = Bullet.Type == BulletType::Player ? 5.0f : 10.0f;
+            BulletRE->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::Trans(Bullet.Pos.X, Bullet.Pos.Y, 0.0f);
+        }
+    }
+}
 
 bool UBGameImpl::Init()
 {
     bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
 
-    Player.Init(&Gfx);
-    Boss.Init(&Gfx);
+    BulletMgr.Init(this);
+    Player.Init(this);
+    Boss.Init(this);
 
     return bResult;
 }
 
 void UBGameImpl::Update()
 {
-    Player.Update(&Gfx);
+    BulletMgr.Update(this);
+    Player.Update(this);
+    Boss.Update(this);
 }
 
 void UBGameImpl::Draw()
@@ -176,8 +411,9 @@ void UBGameImpl::Draw()
 
 bool UBGameImpl::Term()
 {
-    Player.Term(&Gfx);
-    Boss.Term(&Gfx);
+    Player.Term(this);
+    Boss.Term(this);
+    BulletMgr.Term(this);
 
     bool bResult = Gfx.Term();
     return bResult;
