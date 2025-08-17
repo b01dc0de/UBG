@@ -12,6 +12,9 @@ static constexpr TypeID DefaultNumIDs = 1024;
 template <TypeID NumIDs = DefaultNumIDs>
 struct QueueID
 {
+    static constexpr TypeID MinValidID = 1;
+    static constexpr TypeID MaxValidID = NumIDs;
+    static_assert(MaxValidID > MinValidID);
     SArray<TypeID, NumIDs> Available;
     u64 NumAvailable;
     u64 FirstIdx;
@@ -23,7 +26,7 @@ struct QueueID
         Available.Init();
         for (size_t Idx = 0u; Idx < NumIDs; Idx++)
         {
-            Available[Idx] = Idx;
+            Available[Idx] = Idx + 1;
         }
         NumAvailable = NumIDs;
         FirstIdx = 0;
@@ -38,9 +41,13 @@ struct QueueID
     TypeID Pop()
     {
         ASSERT(NumAvailable);
-        TypeID ID = Available[FirstIdx];
-        FirstIdx = (FirstIdx + 1) % NumIDs;
-        NumAvailable--;
+        TypeID ID = 0;
+        if (NumAvailable)
+        {
+            ID = Available[FirstIdx];
+            FirstIdx = (FirstIdx + 1) % NumIDs;
+            NumAvailable--;
+        }
         return ID;
     }
 
@@ -50,6 +57,11 @@ struct QueueID
         LastIdx = (LastIdx + 1) % NumIDs;
         Available[LastIdx] = ID;
         NumAvailable++;
+    }
+
+    bool IsValid(TypeID ID)
+    {
+        return MinValidID <= ID && ID <= MaxValidID;
     }
 };
 
@@ -90,16 +102,29 @@ struct ListID
     {
         ASSERT(NumActive < NumIDs);
         TypeID ID = Queue.Pop();
-        size_t NewIndex = NumActive;
-        IDToIndexMap[ID] = NewIndex;
-        IndexToIDMap[NewIndex] = ID;
-        ActiveList[NewIndex] = NewItem;
-        NumActive++;
+        ASSERT(Queue.IsValid(ID));
 
-        if (bDebugPrint)
+        if (Queue.IsValid(ID))
         {
-            Outf("[ListID][debug]: Created new ID %llu at index %llu\n", ID, NewIndex);
-            DebugPrint();
+            TypeID RealID = ID - 1;
+            size_t NewIndex = NumActive;
+            IDToIndexMap[RealID] = NewIndex;
+            IndexToIDMap[NewIndex] = RealID;
+            ActiveList[NewIndex] = NewItem;
+            NumActive++;
+
+            if (bDebugPrint)
+            {
+                Outf("[ListID][debug]: Created new ID %llu at index %llu\n", RealID, NewIndex);
+                DebugPrint();
+            }
+        }
+        else
+        {
+            if (bDebugPrint)
+            {
+                Outf("[ListID][debug]: Failed to create new ID.\n", ID);
+            }
         }
 
         return ID;
@@ -107,33 +132,47 @@ struct ListID
 
     void Destroy(TypeID ID)
     {
-        ASSERT(ID < NumIDs);
+        ASSERT(ID && Queue.IsValid(ID));
         ASSERT(NumActive);
 
-        // Copy element at end to deleted element to pack valid components:
-        size_t IndexOfRemovedEntity = IDToIndexMap[ID];
-        size_t IndexOfLastElement = NumActive - 1;
-        ActiveList[IndexOfRemovedEntity] = ActiveList[IndexOfLastElement];
-
-        // Update lookup maps:
-        TypeID EntityOfLastElement = IndexToIDMap[IndexOfLastElement];
-        IDToIndexMap[EntityOfLastElement] = IndexOfRemovedEntity;
-        IndexToIDMap[IndexOfRemovedEntity] = EntityOfLastElement;
-
-        Queue.Push(ID);
-        NumActive--;
-
-        if (bDebugPrint)
+        if (ID)
         {
-            Outf("[ListID][debug]: Destroyed ID %llu at index %llu\n", ID, IndexOfRemovedEntity);
-            DebugPrint();
+            TypeID RealID = ID - 1;
+
+            // Copy element at end to deleted element to pack valid components:
+            size_t IndexOfRemovedEntity = IDToIndexMap[RealID];
+            size_t IndexOfLastElement = NumActive - 1;
+            ActiveList[IndexOfRemovedEntity] = ActiveList[IndexOfLastElement];
+
+            // Update lookup maps:
+            TypeID EntityOfLastElement = IndexToIDMap[IndexOfLastElement];
+            IDToIndexMap[EntityOfLastElement] = IndexOfRemovedEntity;
+            IndexToIDMap[IndexOfRemovedEntity] = EntityOfLastElement;
+
+            Queue.Push(RealID);
+            NumActive--;
+
+            if (bDebugPrint)
+            {
+                Outf("[ListID][debug]: Destroyed ID %llu at index %llu\n", ID, IndexOfRemovedEntity);
+                DebugPrint();
+            }
         }
     }
 
     T* Get(TypeID ID)
     {
-        ASSERT(IDToIndexMap[ID] < NumActive);
-        T* Result = IDToIndexMap[ID] < NumActive ? &ActiveList[IDToIndexMap[ID]] : nullptr;
+        ASSERT(ID && Queue.IsValid(ID));
+        T* Result = nullptr;
+        if (ID)
+        {
+            TypeID RealID = ID - 1;
+            ASSERT(IDToIndexMap[RealID] < NumActive);
+            if (IDToIndexMap[RealID] < NumActive)
+            {
+                Result = &ActiveList[IDToIndexMap[RealID]];
+            }
+        }
         return Result;
     }
 
