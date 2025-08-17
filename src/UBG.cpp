@@ -2,6 +2,8 @@
 
 void UBG_Engine::GameLoop()
 {
+    FrameNo++;
+
     Clock->Tick();
     PlatformState->Tick();
     Instance->Update();
@@ -11,6 +13,10 @@ void UBG_Engine::GameLoop()
 bool UBG_Engine::Init()
 {
     Memory::Init();
+
+    Width = 0;
+    Height = 0;
+    FrameNo = 0;
 
     PlatformState = new UBG_PlatformT{};
     GfxState = new UBG_GfxT{};
