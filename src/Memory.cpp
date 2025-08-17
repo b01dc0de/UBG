@@ -31,6 +31,32 @@ struct MemPool
     size_t MaxBytesUsed;
 #endif // _DEBUG
 
+    static void Insert(MemBlock* Blocks, size_t NumBlocks, size_t NewIndex, MemBlock NewBlock)
+    {
+        ASSERT(Blocks);
+        ASSERT(NumBlocks < MaxBlocks);
+        ASSERT(NewIndex < NumBlocks);
+
+        for (size_t ShiftUpIdx = NumBlocks; ShiftUpIdx > NewIndex; ShiftUpIdx--)
+        {
+            Blocks[ShiftUpIdx] = Blocks[ShiftUpIdx - 1];
+        }
+        Blocks[NewIndex] = NewBlock;
+    }
+
+    static void Remove(MemBlock* Blocks, size_t NumBlocks, size_t IndexToRemove)
+    {
+        ASSERT(Blocks);
+        ASSERT(NumBlocks < MaxBlocks);
+        ASSERT(IndexToRemove < NumBlocks);
+
+        for (size_t ShiftDownIdx = IndexToRemove; (ShiftDownIdx + 1) < NumBlocks; ShiftDownIdx++)
+        {
+            Blocks[ShiftDownIdx] = Blocks[ShiftDownIdx + 1];
+        }
+        Blocks[NumBlocks - 1] = {};
+    }
+
     void Init(size_t Size)
     {
         ASSERT(!DataSize);
@@ -105,11 +131,8 @@ struct MemPool
             if (FreeBlocks[FoundIdx].Size == Size)
             {
                 NewAlloc = FreeBlocks[FoundIdx];
-                for (int Idx = FoundIdx; (Idx + 1) < NumFree; Idx++)
-                {
-                    FreeBlocks[Idx] = FreeBlocks[Idx + 1];
-                }
-                FreeBlocks[--NumFree] = {};
+
+                Remove(FreeBlocks, NumFree, FoundIdx);
             }
             else if (FreeBlocks[FoundIdx].Size > Size)
             {
@@ -128,11 +151,7 @@ struct MemPool
             // Case 2: NewAlloc comes before the first alloc
             else if (NewAlloc.Data < AllocBlocks[0].Data)
             {
-                for (int ShiftUpIdx = (int)NumAlloc; ShiftUpIdx > 0; ShiftUpIdx--)
-                {
-                    AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
-                }
-                AllocBlocks[0] = NewAlloc;
+                Insert(AllocBlocks, NumAlloc, 0, NewAlloc);
             }
             // Case 3: NewAlloc comes after last alloc
             else if (NewAlloc.Data > AllocBlocks[NumAlloc - 1].Data)
@@ -155,11 +174,7 @@ struct MemPool
                 ASSERT(NewAllocIdx >= 0);
                 if (NewAllocIdx >= 0)
                 {
-                    for (int ShiftUpIdx = (int)NumAlloc; ShiftUpIdx > NewAllocIdx; ShiftUpIdx--)
-                    {
-                        AllocBlocks[ShiftUpIdx] = AllocBlocks[ShiftUpIdx - 1];
-                    }
-                    AllocBlocks[NewAllocIdx] = NewAlloc;
+                    Insert(AllocBlocks, NumAlloc, NewAllocIdx, NewAlloc);
                 }
             }
 
@@ -179,7 +194,8 @@ struct MemPool
             }
             if (bDebugPrint)
             {
-                Outf("[memory][debug] Alloc'd new ptr (%llu bytes) at 0x%X\n", NewAlloc.Size, NewAlloc.Data);
+                size_t PtrOffset = (u8*)NewAlloc.Data - (u8*)DataPool;
+                Outf("[memory][debug] Alloc'd new ptr (%llu bytes) at 0x%X\n", NewAlloc.Size, PtrOffset);
                 DebugPrint();
             }
         #endif // _DEBUG
@@ -210,16 +226,13 @@ struct MemPool
         if (FoundIdx >= 0)
         {
             MemBlock NewFree = AllocBlocks[FoundIdx];
-            // Shift all alloc blocks, removing the newly freed one
-            for (int Idx = FoundIdx; (Idx + 1) < NumAlloc; Idx++)
-            {
-                AllocBlocks[Idx] = AllocBlocks[Idx + 1];
-            }
-            AllocBlocks[NumAlloc - 1] = {}; // Clear out last allocated block
+            bool bCoalesced = false;
+            bool bCoalescedWithBothAdjacent = false;
+            int NewFreeIdx = -1;
+
+            Remove(AllocBlocks, NumAlloc, FoundIdx);
 
             // Check if NewFree can be coalesced (is adjacent to other free blocks)
-            bool bCoalesced = false;
-            int NewFreeIdx = -1;
             void* NewFreeBegin = (u8*)NewFree.Data;
             void* NewFreeEnd = (u8*)NewFree.GetBlockEnd();
 
@@ -239,12 +252,8 @@ struct MemPool
             // Case 2: NewFree will be inserted at first
             else if (NewFreeEnd < FreeBlocks[0].Data)
             {
-                for (int ShiftUpIdx = (int)NumFree; ShiftUpIdx > 0; ShiftUpIdx--)
-                {
-                    FreeBlocks[ShiftUpIdx] = FreeBlocks[ShiftUpIdx - 1];
-                }
                 NewFreeIdx = 0;
-                FreeBlocks[NewFreeIdx] = NewFree;
+                Insert(FreeBlocks, NumFree, NewFreeIdx, NewFree);
             }
             // Case 3: NewFree will be coalesced with last block
             else if (NewFreeBegin == FreeBlocks[NumFree - 1].Data)
@@ -275,13 +284,10 @@ struct MemPool
                         size_t CoalescedSize = FreeBlocks[Idx].Size + NewFree.Size + FreeBlocks[Idx + 1].Size;
                         FreeBlocks[Idx].Size = CoalescedSize;
 
-                        for (int ShiftDownIdx = Idx + 1; (ShiftDownIdx + 1) < NumFree; ShiftDownIdx++)
-                        {
-                            FreeBlocks[ShiftDownIdx] = FreeBlocks[ShiftDownIdx + 1];
-                        }
-                        FreeBlocks[--NumFree] = {};
+                        Remove(FreeBlocks, NumFree, Idx + 1);
 
                         bCoalesced = true;
+                        bCoalescedWithBothAdjacent = true;
                         break;
                     }
                     // Case 5.B: NewFree will be coalesced with adjcent block before
@@ -310,6 +316,7 @@ struct MemPool
                         ((u8*)NewFree.Data < (u8*)FreeBlocks[Idx + 1].Data))
                     {
                         NewFreeIdx = Idx + 1;
+                        Insert(FreeBlocks, NumFree, NewFreeIdx, NewFree);
                         break;
                     }
                 }
@@ -320,6 +327,7 @@ struct MemPool
             TotalFreeSize += NewFree.Size;
             NumAlloc--;
             if (!bCoalesced) { NumFree++; }
+            else if (bCoalescedWithBothAdjacent) { NumFree--; }
         }
         else
         {
@@ -330,7 +338,8 @@ struct MemPool
         TotalNumFrees++;
         if (bDebugPrint)
         {
-            Outf("[memory][debug] Free'd 0x%X\n", Ptr);
+            size_t PtrOffset = (u8*)Ptr - (u8*)DataPool;
+            Outf("[memory][debug] Free'd 0x%X\n", PtrOffset);
             DebugPrint();
         }
     #endif // _DEBUG
