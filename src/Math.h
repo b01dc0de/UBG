@@ -6,7 +6,9 @@ static constexpr f32 fTAU = fPI * 2.0f;
 
 bool fIsZero(f32 A);
 
-float Clamp(f32 Min, float Max, float C);
+f32 Min(f32 A, f32 B);
+f32 Max(f32 A, f32 B);
+f32 Clamp(f32 Min, f32 Max, f32 C);
 
 v2f Add(v2f A, v2f B);
 v3f Add(v3f A, v3f B);
@@ -17,16 +19,19 @@ v3f operator+(v3f A, v3f B);
 v2f operator-(v2f A, v2f B);
 v3f operator-(v3f A, v3f B);
 
-float LengthSq(v2f V);
-float LengthSq(v3f V);
-float Length(v2f V);
-float Length(v3f V);
+f32 LengthSq(v2f V);
+f32 LengthSq(v3f V);
+f32 Length(v2f V);
+f32 Length(v3f V);
 v2f Norm(v2f V);
 v3f Norm(v3f V);
 
-float Dot(v2f A, v2f B);
-float Dot(v3f A, v3f B);
-float Dot(v4f A, v4f B);
+f32 Dist(v2f A, v2f B);
+f32 Dist(v3f A, v3f B);
+
+f32 Dot(v2f A, v2f B);
+f32 Dot(v3f A, v3f B);
+f32 Dot(v4f A, v4f B);
 v3f Cross(v3f A, v3f B);
 
 f32 Lerp(f32 A, f32 B, f32 t);

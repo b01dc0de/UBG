@@ -37,8 +37,8 @@ m4f m4f::Identity()
 
 m4f m4f::RotX(f32 Angle)
 {
-    const float fCos = cosf(Angle);
-    const float fSin = sinf(Angle);
+    const f32 fCos = cosf(Angle);
+    const f32 fSin = sinf(Angle);
 
     m4f Result = Identity();
     Result.V1 = { 0.0f,  fCos, -fSin, 0.0f };
@@ -48,8 +48,8 @@ m4f m4f::RotX(f32 Angle)
 
 m4f m4f::RotY(f32 Angle)
 {
-    const float fCos = cosf(Angle);
-    const float fSin = sinf(Angle);
+    const f32 fCos = cosf(Angle);
+    const f32 fSin = sinf(Angle);
 
     m4f Result = Identity();
     Result.V0 = { fCos, 0.0f,  fSin, 0.0f };
@@ -59,8 +59,8 @@ m4f m4f::RotY(f32 Angle)
 
 m4f m4f::RotZ(f32 Angle)
 {
-    const float fCos = cosf(Angle);
-    const float fSin = sinf(Angle);
+    const f32 fCos = cosf(Angle);
+    const f32 fSin = sinf(Angle);
 
     m4f Result = Identity();
     Result.V0 = { fCos,  -fSin, 0.0f, 0.0f };
@@ -72,22 +72,22 @@ m4f m4f::RotAxis(v3f Axis, f32 Angle)
 {
     v3f k = Norm(Axis);
 
-    float C = cosf(Angle);
-    float S = sinf(Angle);
+    f32 C = cosf(Angle);
+    f32 S = sinf(Angle);
 
-    float c_inv = 1.0f - C;
+    f32 c_inv = 1.0f - C;
 
-    float k_xx = k.X * k.X;
-    float k_yy = k.Y * k.Y;
-    float k_zz = k.Z * k.Z;
+    f32 k_xx = k.X * k.X;
+    f32 k_yy = k.Y * k.Y;
+    f32 k_zz = k.Z * k.Z;
 
-    float k_xy = k.X * k.Y;
-    float k_yz = k.Y * k.Z;
-    float k_xz = k.X * k.Z;
+    f32 k_xy = k.X * k.Y;
+    f32 k_yz = k.Y * k.Z;
+    f32 k_xz = k.X * k.Z;
 
-    float s_x = S * k.X;
-    float s_y = S * k.Y;
-    float s_z = S * k.Z;
+    f32 s_x = S * k.X;
+    f32 s_y = S * k.Y;
+    f32 s_z = S * k.Z;
 
     m4f Result;
     Result.V0 = { C + k_xx * c_inv, +s_z + k_xy * c_inv, -s_y + k_xz * c_inv, 0.0f };
@@ -127,7 +127,19 @@ bool fIsZero(f32 A)
     return fabsf(A) < fEpsilon;
 }
 
-float Clamp(f32 Min, float Max, float C)
+f32 Min(f32 A, f32 B)
+{
+    if (B < A) { return B; }
+    return A;
+}
+
+f32 Max(f32 A, f32 B)
+{
+    if (B > A) { return B; }
+    return A;
+}
+
+f32 Clamp(f32 Min, f32 Max, f32 C)
 {
     if (C < Min) { return Min; }
     if (C > Max) { return Max; }
@@ -178,33 +190,33 @@ v3f operator-(v3f A, v3f B)
     return Subtract(A, B);
 }
 
-float LengthSq(v2f V)
+f32 LengthSq(v2f V)
 {
-    float Result = V.X * V.X + V.Y * V.Y;
+    f32 Result = V.X * V.X + V.Y * V.Y;
     return Result;
 }
 
-float LengthSq(v3f V)
+f32 LengthSq(v3f V)
 {
-    float Result = V.X * V.X + V.Y * V.Y + V.Z * V.Z;
+    f32 Result = V.X * V.X + V.Y * V.Y + V.Z * V.Z;
     return Result;
 }
 
-float Length(v2f V)
+f32 Length(v2f V)
 {
-    float Result = sqrtf(LengthSq(V));
+    f32 Result = sqrtf(LengthSq(V));
     return Result;
 }
 
-float Length(v3f V)
+f32 Length(v3f V)
 {
-    float Result = sqrtf(LengthSq(V));
+    f32 Result = sqrtf(LengthSq(V));
     return Result;
 }
 
 v2f Norm(v2f V)
 {
-    float fLength = Length(V);
+    f32 fLength = Length(V);
     v2f Result = { 0.0f, 0.0f };
     if (!fIsZero(fLength))
     {
@@ -215,7 +227,7 @@ v2f Norm(v2f V)
 
 v3f Norm(v3f V)
 {
-    float fLength = Length(V);
+    f32 fLength = Length(V);
     v3f Result = { 0.0f, 0.0f, 0.0f };
     if (!fIsZero(fLength))
     {
@@ -224,21 +236,33 @@ v3f Norm(v3f V)
     return Result;
 }
 
-float Dot(v2f A, v2f B)
+f32 Dist(v2f A, v2f B)
 {
-    float Result = A.X * B.X + A.Y * B.Y;
+    v2f Diff = A - B;
+    return Length(Diff);
+}
+
+f32 Dist(v3f A, v3f B)
+{
+    v3f Diff = A - B;
+    return Length(Diff);
+}
+
+f32 Dot(v2f A, v2f B)
+{
+    f32 Result = A.X * B.X + A.Y * B.Y;
     return Result;
 }
 
-float Dot(v3f A, v3f B)
+f32 Dot(v3f A, v3f B)
 {
-    float Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z;
+    f32 Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z;
     return Result;
 }
 
-float Dot(v4f A, v4f B)
+f32 Dot(v4f A, v4f B)
 {
-    float Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z + A.W * B.W;
+    f32 Result = A.X * B.X + A.Y * B.Y + A.Z * B.Z + A.W * B.W;
     return Result;
 }
 

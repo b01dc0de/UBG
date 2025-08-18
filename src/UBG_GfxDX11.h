@@ -155,6 +155,7 @@ struct GfxSystem
     ListID<SamplerStateT> Samplers;
 
     MeshStateID idQuadTexture;
+    MeshStateID idQuadUnicolor;
     ListID<MeshStateT> Meshes;
 
     Camera MainCameraO;

@@ -38,6 +38,7 @@ extern UBG_Engine* GlobalEngine;
 // Common project headers:
 #include "Array.h"
 #include "Clock.h"
+#include "Collision.h"
 #include "Input.h"
 #include "Math.h"
 #include "Memory.h"

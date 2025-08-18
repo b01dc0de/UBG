@@ -670,6 +670,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             0, 0
         );
         idsDrawState[(size_t)DrawType::Color] = DrawStates.Create(DrawColor);
+        ASSERT(idsDrawState[(size_t)DrawType::Color]);
     }
 
     // Shader texture:
@@ -691,6 +692,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             1, 1
         );
         idsDrawState[(size_t)DrawType::Texture] = DrawStates.Create(DrawTexture);
+        ASSERT(idsDrawState[(size_t)DrawType::Texture]);
     }
 
     // Shader unicolor:
@@ -722,11 +724,12 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             0, 0
         );
         idsDrawState[(size_t)DrawType::Unicolor] = DrawStates.Create(DrawUnicolor);
+        ASSERT(idsDrawState[(size_t)DrawType::Unicolor]);
     }
 
     // Platonic quad:
     {
-        VxTex QuadVerts[] = {
+        VxTex QuadVertsTexture[] = {
             { { -0.5f, +0.5f, +0.5f, 1.0f}, { 0.0f, 0.0f } },
             { { +0.5f, +0.5f, +0.5f, 1.0f}, { 1.0f, 0.0f } },
             { { -0.5f, -0.5f, +0.5f, 1.0f}, { 0.0f, 1.0f } },
@@ -737,11 +740,32 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
         idQuadTexture = CreateMesh(
             sizeof(VxTex),
-            ARRAY_SIZE(QuadVerts),
-            QuadVerts,
-            ARRAY_SIZE(QuadInds),
-            QuadInds
+            ARRAY_SIZE(QuadVertsTexture), QuadVertsTexture,
+            ARRAY_SIZE(QuadInds), QuadInds
         );
+        ASSERT(idQuadTexture);
+
+        VxMin QuadVertsUnicolor[] = {
+            { { -0.5f, +0.5f, +0.5f, 1.0f} },
+            { { +0.5f, +0.5f, +0.5f, 1.0f} },
+            { { -0.5f, -0.5f, +0.5f, 1.0f} },
+            { { +0.5f, -0.5f, +0.5f, 1.0f} },
+        };
+        /*
+        VxMin QuadVertsUnicolor[] = {
+            { { 0.0f, 1.0f, +0.5f, 1.0f} },
+            { { 1.0f, 1.0f, +0.5f, 1.0f} },
+            { { 0.0f, 0.0f, +0.5f, 1.0f} },
+            { { 1.0f, 0.0f, +0.5f, 1.0f} },
+        };
+        */
+
+        idQuadUnicolor = CreateMesh(
+            sizeof(VxMin),
+            ARRAY_SIZE(QuadVertsUnicolor), QuadVertsUnicolor,
+            ARRAY_SIZE(QuadInds), QuadInds
+        );
+        ASSERT(idQuadUnicolor);
     }
 
     // TODO: Why is Depth passed as -2?

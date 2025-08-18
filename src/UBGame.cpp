@@ -2,23 +2,23 @@
 
 struct UBGameImpl;
 
-struct AABB
-{
-    v2f Min;
-    v2f Max;
-};
-
 struct PlayerShip
 {
     static constexpr bool bUseShipMesh = true;
+    static constexpr f32 fMaxSpeed = 750.0f; //1000.0f;
     TextureStateID idShipTexture;
     MeshStateID idShipMesh;
     RenderEntityID idShip;
+    RenderEntityID idShipHealthbarBG;
+    RenderEntityID idShipHealthbar;
     v2f Pos;
     f32 Momentum;
-    float Scale;
-    float Angle;
+    f32 Scale;
+    f32 Angle;
+    f32 Health;
+    AABB BoundingBox;
 
+    void Hit(UBGameImpl* Game);
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
     void Update(UBGameImpl* Game);
@@ -30,9 +30,13 @@ struct BossShip
     RenderEntityID idShip;
     MeshStateID idBoundingBoxMesh;
     RenderEntityID idBoundingBox;
+    RenderEntityID idShipHealthbarBG;
+    RenderEntityID idShipHealthbar;
     AABB BoundingBox;
     f32 Scale;
+    f32 Health;
 
+    void Hit(UBGameImpl* Game);
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
     void Update(UBGameImpl* Game);
@@ -60,6 +64,8 @@ struct BulletManager
     static constexpr int MaxBulletsBoss = 256;
     static constexpr v4f PlayerBulletColor = { 0.0f, 1.0f, 0.0f, 1.0f };
     static constexpr v4f BossBulletColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+    static constexpr f32 PlayerBulletSize = 5.0f;
+    static constexpr f32 BossBulletSize = 10.0f;
 
     MeshStateID idBulletMesh;
     int NumBulletsPlayer;
@@ -67,6 +73,7 @@ struct BulletManager
     DArray<PerBulletData> ActiveBullets;
     DArray<RenderEntityID> InactiveBullets;
 
+    static bool DoesCollide(PerBulletData& Bullet, AABB* BoundingBox);
     static bool IsOffscreen(PerBulletData& Bullet);
     void NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel);
     void Init(UBGameImpl* Game);
@@ -103,16 +110,50 @@ struct UBGameImpl
     bool Term();
 };
 
+void PlayerShip::Hit(UBGameImpl* Game)
+{
+    UNUSED_VAR(Game);
+    Health -= 25.0f;
+    if (Health <= 0.0f)
+    {
+        Term(Game);
+        Init(Game);
+    }
+}
+
 void PlayerShip::Init(UBGameImpl* Game)
 {
     Pos = { (float)GlobalEngine->Width * -0.25f, (float)GlobalEngine->Height * +0.25f };
     Momentum = 0.0f;
     Scale = 25.0f;
     Angle = 0.0f;
+    Health = 100.0f;
+    float HalfScale = Scale * 0.5f;
+    BoundingBox =
+    {
+        { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
+        { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
+    };
 
     RenderEntity PlayerShipData = {};
     PlayerShipData.bVisible = true;
     PlayerShipData.World = m4f::Identity();
+
+    {
+        RenderEntity HealthbarData = {};
+        HealthbarData.bVisible = true;
+        HealthbarData.World = m4f::Identity();
+        HealthbarData.Type = DrawType::Unicolor;
+        HealthbarData.idMesh = Game->Gfx.idQuadUnicolor;
+        HealthbarData.UnicolorState = { { 1.0f, 1.0f, 1.0f, 1.0f } };
+
+        idShipHealthbarBG = Game->Gfx.CreateEntity(HealthbarData);
+        ASSERT(idShipHealthbarBG);
+
+        HealthbarData.UnicolorState = { { 1.0f, 0.0f, 0.0f, 1.0f } };
+        idShipHealthbar = Game->Gfx.CreateEntity(HealthbarData);
+        ASSERT(idShipHealthbar);
+    }
 
     if (bUseShipMesh)
     {
@@ -198,6 +239,8 @@ void PlayerShip::Term(UBGameImpl* Game)
         Game->Gfx.DestroyTexture(idShipTexture);
     }
     Game->Gfx.DestroyEntity(idShip);
+    Game->Gfx.DestroyEntity(idShipHealthbar);
+    Game->Gfx.DestroyEntity(idShipHealthbarBG);
 }
 
 void PlayerShip::Update(UBGameImpl* Game)
@@ -206,7 +249,6 @@ void PlayerShip::Update(UBGameImpl* Game)
     bool bKeyA = GlobalEngine->Input->Keyboard.GetKey('A');
     bool bKeyS = GlobalEngine->Input->Keyboard.GetKey('S');
     bool bKeyD = GlobalEngine->Input->Keyboard.GetKey('D');
-    constexpr f32 fMaxSpeed = 1000.0f;
     f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
     bool bMoving = false;
     v2f Vel = { 0.0f, 0.0f };
@@ -243,6 +285,11 @@ void PlayerShip::Update(UBGameImpl* Game)
     float HalfHeight = GlobalEngine->Height * 0.5f;
     Pos.X = Clamp(0.0f + HalfScale - HalfWidth, GlobalEngine->Width - HalfScale - HalfWidth, Pos.X);
     Pos.Y = Clamp(0.0f + HalfScale - HalfHeight, GlobalEngine->Height - HalfScale - HalfHeight, Pos.Y);
+    BoundingBox =
+    {
+        { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
+        { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
+    };
 
     if (!GlobalEngine->Input->Mouse.bOffscreen)
     {
@@ -262,6 +309,20 @@ void PlayerShip::Update(UBGameImpl* Game)
     ASSERT(pRent);
     pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
 
+    // Health bar:
+    {
+        v2f HealthbarPos = { 256.0f, 256.0f };
+        v2f HealthbarSize = { 100.0f, 30.0f };
+
+        RenderEntity* pREHealthbarBG = Game->Gfx.GetEntity(idShipHealthbarBG);
+        ASSERT(pREHealthbarBG);
+        pREHealthbarBG->World = m4f::Scale(HealthbarSize.X, HealthbarSize.Y, 1.0f) * m4f::Trans(HealthbarPos.X, HealthbarPos.Y, 0.0f);
+
+        RenderEntity* pREHealthbar = Game->Gfx.GetEntity(idShipHealthbar);
+        ASSERT(pREHealthbar);
+        pREHealthbar->World = m4f::Scale(HealthbarSize.X*Health/100.0f*0.90f, HealthbarSize.Y*0.90f, 1.0f) * m4f::Trans(HealthbarPos.X, HealthbarPos.Y, -0.1f);
+    }
+
     static f32 LastBulletSpawn = 0.0f;
     static constexpr f32 SecondsPerBullet = 0.25f;
     static constexpr f32 Speed = 100.0f;
@@ -277,6 +338,16 @@ void PlayerShip::Update(UBGameImpl* Game)
     }
 }
 
+void BossShip::Hit(UBGameImpl* Game)
+{
+    Health -= 1.0f;
+    if (Health < 0.0f)
+    {
+        Term(Game);
+        Init(Game);
+    }
+}
+
 void BossShip::Init(UBGameImpl* Game)
 {
     constexpr u32 BossNumPoints = 32;
@@ -288,6 +359,7 @@ void BossShip::Init(UBGameImpl* Game)
 
     BoundingBox = { {}, {} };
     Scale = 10.0f;
+    Health = 100.0f;
     // Boss mesh:
     {
         VxMin BossVerts[BossNumVerts] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -407,6 +479,12 @@ void BossShip::Update(UBGameImpl* Game)
         Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
         LastBulletSpawn = CurrTime;
     }
+}
+
+bool BulletManager::DoesCollide(PerBulletData& Bullet, AABB* BoundingBox)
+{
+    SphereBB BulletBB = { Bullet.Pos, Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize };
+    return Collision::Check(BoundingBox, &BulletBB);
 }
 
 bool BulletManager::IsOffscreen(PerBulletData& Bullet)
@@ -559,7 +637,34 @@ void BulletManager::Update(UBGameImpl* Game)
 
         RenderEntity* BulletRE = Game->Gfx.GetEntity(Bullet.ID);
         ASSERT(BulletRE);
-        if (IsOffscreen(Bullet))
+
+        bool bHitsPlayer = Bullet.Type == BulletType::Player ? false : DoesCollide(Bullet, &Game->Player.BoundingBox);
+        bool bHitsBoss = Bullet.Type == BulletType::Boss ? false : DoesCollide(Bullet, &Game->Boss.BoundingBox);
+        if (bHitsPlayer || bHitsBoss)
+        {
+            if (bHitsPlayer)
+            {
+                bool bDebugRedo = DoesCollide(Bullet, &Game->Player.BoundingBox);
+                (void)bDebugRedo;
+                ASSERT(Bullet.Type == BulletType::Boss);
+                Game->Player.Hit(Game);
+                NumBulletsBoss--;
+            }
+            else if (bHitsBoss)
+            {
+                bool bDebugRedo = DoesCollide(Bullet, &Game->Boss.BoundingBox);
+                (void)bDebugRedo;
+                ASSERT(Bullet.Type == BulletType::Player);
+                Game->Boss.Hit(Game);
+                NumBulletsPlayer--;
+            }
+            RenderEntityID idInactiveBullet = Bullet.ID;
+            BulletRE->bVisible = false;
+            ActiveBullets.Remove(Idx);
+            InactiveBullets.Add(idInactiveBullet);
+            Idx--;
+        }
+        else if (IsOffscreen(Bullet))
         {
             if (bDebugPrint)
             {
@@ -569,22 +674,17 @@ void BulletManager::Update(UBGameImpl* Game)
                 Outf("\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
                 Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
             }
-            if (Bullet.Type == BulletType::Player)
-            {
-                NumBulletsPlayer--;
-            }
-            else
-            {
-                NumBulletsBoss--;
-            }
+            if (Bullet.Type == BulletType::Player) { NumBulletsPlayer--; }
+            else { NumBulletsBoss--; }
             RenderEntityID idInactiveBullet = Bullet.ID;
             BulletRE->bVisible = false;
             ActiveBullets.Remove(Idx);
             InactiveBullets.Add(idInactiveBullet);
+            Idx--;
         }
         else
         {
-            float Scale = Bullet.Type == BulletType::Player ? 5.0f : 10.0f;
+            float Scale = Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize;
             BulletRE->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::Trans(Bullet.Pos.X, Bullet.Pos.Y, 0.0f);
         }
     }
