@@ -1,5 +1,7 @@
 #include "UBG.h" // E UBG_Gfx.h E UBG_GfxDX11.h
 
+static_assert(UBG_GFX_IMPL_DX11(), "UBG_GfxDX11.cpp: File being built without DX11 GfxBackend impl defined");
+
 // NOTE: This include lib format is supported only via MSVC, keep in mind if we want to support other compilers on Windows
 #pragma comment(lib, "D3D11.lib")
 #pragma comment(lib, "D3DCompiler.lib")
@@ -120,6 +122,23 @@ MeshStateT CreateMeshState
     size_t NumIndices,
     unsigned int* IndexData
 );
+
+RenderEntity RenderEntity::Default(m4f World, DrawType Type, MeshStateID idMesh)
+{
+    RenderEntity Result = {};
+    Result.bVisible = true;
+    Result.World = World;
+    Result.Type = Type;
+    Result.idMesh = idMesh;
+    switch (Type)
+    {
+        case DrawType::Color: { Result.ColorState = {}; } break;
+        case DrawType::Texture: { Result.TextureState = {}; } break;
+        case DrawType::Unicolor: { Result.UnicolorState = {}; } break;
+        default: { ASSERT(false); } break;
+    }
+    return Result;
+}
 
 void RenderEntitySystem::Init()
 {

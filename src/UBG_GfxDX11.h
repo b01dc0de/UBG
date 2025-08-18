@@ -1,6 +1,8 @@
 #ifndef UBG_GFXDX11_H
 #define UBG_GFXDX11_H
 
+static_assert(UBG_GFX_IMPL_DX11(), "UBG_GfxDX11.h: Header used without DX11 GfxBackend impl defined");
+
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
@@ -117,6 +119,8 @@ struct RenderEntity
         DrawTextureState TextureState;
         DrawUnicolorState UnicolorState;
     };
+
+    static RenderEntity Default(m4f World, DrawType Type, MeshStateID idMesh);
 
     void UpdateWorld(GfxSystem* System);
     void Draw(GfxSystem* System);

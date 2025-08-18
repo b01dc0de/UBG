@@ -1,5 +1,7 @@
 #include "UBG.h" // E UBG_Platform.h E UBG_PlatformWin32.h
 
+static_assert(UBG_PLATFORM_IMPL_WIN32(), "UBG_Platform_Win32.cpp: File being built without Win32 Platform impl defined");
+
 void Outf(const char* Fmt, ...)
 {
     constexpr size_t BufferLength = 1024;

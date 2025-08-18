@@ -75,28 +75,15 @@ bool UBGameImplDemo::Init()
     float HalfHeight = GlobalEngine->Height * 0.5f;
     m4f SpriteWorld = m4f::Scale(HalfWidth, HalfHeight, 1.0f) * m4f::Trans(0.0f, 0.0f, 0.0f);
 
-    RenderEntity ColorTriangleData = {};
-    ColorTriangleData.bVisible = true;
-    ColorTriangleData.World = SpriteWorld;
-    ColorTriangleData.Type = DrawType::Color;
-    ColorTriangleData.idMesh = idTriangle;
-    ColorTriangleData.ColorState = {};
+    RenderEntity ColorTriangleData = RenderEntity::Default(SpriteWorld, DrawType::Color, idTriangle);
     idTriangleColor = System.CreateEntity(ColorTriangleData);
 
-    RenderEntity QuadTextureData = {};
-    QuadTextureData.bVisible = true;
-    QuadTextureData.World = SpriteWorld;
-    QuadTextureData.Type = DrawType::Texture;
-    QuadTextureData.idMesh = idQuad;
+    RenderEntity QuadTextureData = RenderEntity::Default(SpriteWorld, DrawType::Texture, idQuad);
     QuadTextureData.TextureState.idTexture = System.idFallbackTexture;
     QuadTextureData.TextureState.idSampler = System.idDefaultSampler;
     idQuadTexture = System.CreateEntity(QuadTextureData);
 
-    RenderEntity QuadUnicolorData = {};
-    QuadUnicolorData.bVisible = true;
-    QuadUnicolorData.World = SpriteWorld;
-    QuadUnicolorData.Type = DrawType::Unicolor;
-    QuadUnicolorData.idMesh = idQuadMin;
+    RenderEntity QuadUnicolorData = RenderEntity::Default(SpriteWorld, DrawType::Unicolor, idQuadMin);
     QuadUnicolorData.UnicolorState.Color = GetRandomColorDim();
     idQuadUnicolor = System.CreateEntity(QuadUnicolorData);
 

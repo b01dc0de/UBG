@@ -1,6 +1,32 @@
 #include "../UBG.h"
 #include "Impl.h"
 
+void VisualProgressBar::Init(UBGameImpl* Game, v4f _Color, v2f _Pos, v2f _Size)
+{
+    // TODO:
+    (void)Game;
+    (void)_Color;
+    (void)_Pos;
+    (void)_Size;
+
+    //RenderEntityID idBar;
+    //v4f Color;
+    //v2f Pos;
+    //v2f Size;
+}
+
+void VisualProgressBar::Term(UBGameImpl* Game)
+{
+    // TODO:
+    (void)Game;
+}
+
+void VisualProgressBar::Update(UBGameImpl* Game)
+{
+    // TODO:
+    (void)Game;
+}
+
 void PlayerShip::Hit(UBGameImpl* Game)
 {
     UNUSED_VAR(Game);
@@ -26,16 +52,8 @@ void PlayerShip::Init(UBGameImpl* Game)
         { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
     };
 
-    RenderEntity PlayerShipData = {};
-    PlayerShipData.bVisible = true;
-    PlayerShipData.World = m4f::Identity();
-
     {
-        RenderEntity HealthbarData = {};
-        HealthbarData.bVisible = true;
-        HealthbarData.World = m4f::Identity();
-        HealthbarData.Type = DrawType::Unicolor;
-        HealthbarData.idMesh = Game->Gfx.idQuadUnicolor;
+        RenderEntity HealthbarData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, Game->Gfx.idQuadUnicolor);
         HealthbarData.UnicolorState = { { 1.0f, 1.0f, 1.0f, 1.0f } };
 
         idShipHealthbarBG = Game->Gfx.CreateEntity(HealthbarData);
@@ -45,6 +63,9 @@ void PlayerShip::Init(UBGameImpl* Game)
         idShipHealthbar = Game->Gfx.CreateEntity(HealthbarData);
         ASSERT(idShipHealthbar);
     }
+
+
+    RenderEntity PlayerShipData;
 
     if (bUseShipMesh)
     {
@@ -98,8 +119,8 @@ void PlayerShip::Init(UBGameImpl* Game)
         };
         idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), NumVerts, Verts, NumInds, Inds);
         ASSERT(idShipMesh);
-        PlayerShipData.Type = DrawType::Unicolor;
-        PlayerShipData.idMesh = idShipMesh;
+
+        PlayerShipData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idShipMesh);
         PlayerShipData.UnicolorState = { v4f{ 1.0f, 1.0f, 1.0f, 1.0f } };
     }
     else
@@ -107,8 +128,7 @@ void PlayerShip::Init(UBGameImpl* Game)
         ImageT PlayerShipTextureImage = {};
         LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
         ASSERT(PlayerShipTextureImage.PxBuffer);
-        PlayerShipData.Type = DrawType::Texture;
-        PlayerShipData.idMesh = Game->Gfx.idQuadTexture;
+        PlayerShipData = RenderEntity::Default(m4f::Identity(), DrawType::Texture, Game->Gfx.idQuadTexture);
         idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
         ASSERT(idShipTexture);
         PlayerShipData.TextureState.idTexture = idShipTexture;
@@ -328,20 +348,12 @@ void BossShip::Init(UBGameImpl* Game)
         );
         ASSERT(idBoundingBoxMesh);
 
-        RenderEntity BoundingBoxRenderData = {};
-        BoundingBoxRenderData.bVisible = true;
-        BoundingBoxRenderData.World = m4f::Scale(Scale, Scale, 1.0f); // m4f::Scale(50.0f, 50.0f, 1.0f);
-        BoundingBoxRenderData.Type = DrawType::Unicolor;
-        BoundingBoxRenderData.idMesh = idBoundingBoxMesh;
+        RenderEntity BoundingBoxRenderData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0f), DrawType::Unicolor, idBoundingBoxMesh);
         BoundingBoxRenderData.UnicolorState = { { 1.0f, 1.0f, 0.0f, 1.0f } };
         idBoundingBox = Game->Gfx.CreateEntity(BoundingBoxRenderData);
     }
 
-    RenderEntity BossShipData = {};
-    BossShipData.bVisible = true;
-    BossShipData.World = m4f::Scale(Scale, Scale, 1.0);
-    BossShipData.Type = DrawType::Unicolor;
-    BossShipData.idMesh = idShipMesh;
+    RenderEntity BossShipData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0), DrawType::Unicolor, idShipMesh);
     BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
     idShip = Game->Gfx.CreateEntity(BossShipData);
     ASSERT(idShip);
@@ -426,11 +438,7 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
         }
         else
         {
-            RenderEntity REBulletData = { };
-            REBulletData.bVisible = true;
-            REBulletData.World = m4f::Identity();
-            REBulletData.Type = DrawType::Unicolor;
-            REBulletData.idMesh = idBulletMesh;
+            RenderEntity REBulletData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBulletMesh);
             REBulletData.UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
             RenderEntityID NewID = Game->Gfx.CreateEntity(REBulletData);
             if (NewID == 0)
@@ -612,11 +620,7 @@ void Background::Init(UBGameImpl* Game)
         ASSERT(idBackgroundMesh);
     }
 
-    RenderEntity BackgroundRenderData = {};
-    BackgroundRenderData.bVisible = true;
-    BackgroundRenderData.World = m4f::Identity();
-    BackgroundRenderData.Type = DrawType::Unicolor;
-    BackgroundRenderData.idMesh = idBackgroundMesh;
+    RenderEntity BackgroundRenderData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBackgroundMesh);
     BackgroundRenderData.UnicolorState = { { 0.0f, 0.0f, 0.0f, 1.0f } };
     idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
     ASSERT(idBackground);

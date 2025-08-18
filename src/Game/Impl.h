@@ -3,16 +3,17 @@
 
 struct UBGameImpl;
 
-/*
-struct VisualHealthbar
+struct VisualProgressBar
 {
-    RenderEntityID idHealthbar;
+    RenderEntityID idBar;
+    v4f Color;
+    v2f Pos;
+    v2f Size;
 
-    void Init(UBGameImpl* Game);
-    void Term(UBGameImpl*);
+    void Init(UBGameImpl* Game, v4f _Color, v2f _Pos, v2f _Size);
+    void Term(UBGameImpl* Game);
     void Update(UBGameImpl* Game);
 };
-*/
 
 struct PlayerShip
 {
