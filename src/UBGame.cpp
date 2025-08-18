@@ -58,10 +58,27 @@ struct BulletManager
     void Update(UBGameImpl* Game);
 };
 
+struct Background
+{
+    v4f CurrColor;
+    v4f NextColor;
+    f32 LastSwitchTime;
+    f32 StepDurationSeconds;
+
+
+    MeshStateID idBackgroundMesh;
+    RenderEntityID idBackground;
+
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
+};
+
 struct UBGameImpl
 {
     GfxSystem Gfx;
 
+    Background BG;
     BulletManager BulletMgr;
     PlayerShip Player;
     BossShip Boss;
@@ -390,10 +407,92 @@ void BulletManager::Update(UBGameImpl* Game)
     }
 }
 
+void Background::Init(UBGameImpl* Game)
+{
+    CurrColor = GetRandomColorDim();
+    NextColor = GetRandomColorDim();
+    LastSwitchTime = 0.0f;
+    StepDurationSeconds = 2.0f;
+
+    {
+        VxMin BackgroundVerts[] =
+        {
+            { GlobalEngine->Width * -4.0f, GlobalEngine->Height * +4.0f, +0.99f, 1.0f },
+            { GlobalEngine->Width * +4.0f, GlobalEngine->Height * +4.0f, +0.99f, 1.0f }, 
+            { GlobalEngine->Width * -4.0f, GlobalEngine->Height * -4.0f, +0.99f, 1.0f }, 
+            { GlobalEngine->Width * +4.0f, GlobalEngine->Height * -4.0f, +0.99f, 1.0f }, 
+        };
+
+        u32 BackgroundInds[] =
+        {
+            0, 1, 2,
+            1, 3, 2
+        };
+
+        idBackgroundMesh = Game->Gfx.CreateMesh
+        (
+            sizeof(VxMin),
+            ARRAY_SIZE(BackgroundVerts), BackgroundVerts,
+            ARRAY_SIZE(BackgroundInds), BackgroundInds
+        );
+        ASSERT(idBackgroundMesh);
+    }
+
+    RenderEntity BackgroundRenderData = {};
+    BackgroundRenderData.bVisible = true;
+    BackgroundRenderData.World = m4f::Identity();
+    BackgroundRenderData.Type = DrawType::Unicolor;
+    BackgroundRenderData.idMesh = idBackgroundMesh;
+    BackgroundRenderData.UnicolorState = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
+    ASSERT(idBackground);
+}
+
+void Background::Term(UBGameImpl* Game)
+{
+    Game->Gfx.DestroyEntity(idBackground);
+    Game->Gfx.DestroyMesh(idBackgroundMesh);
+}
+
+void Background::Update(UBGameImpl* Game)
+{
+    RenderEntity* RE = Game->Gfx.GetEntity(idBackground);
+    ASSERT(RE);
+    /*
+    { // Set cycle between predefined colors:
+        constexpr v4f Colors[] = {
+            { 1.0f, 0.0f, 0.0f, 1.0f },
+            { 0.0f, 1.0f, 0.0f, 1.0f },
+            { 0.0f, 0.0f, 0.1f, 1.0f },
+            { 1.0f, 1.0f, 1.0f, 1.0f },
+            { 0.0f, 0.0f, 0.0f, 1.0f }
+        };
+        constexpr float StepDurationSeconds = 2.0f;
+        constexpr size_t NumColors = ARRAY_SIZE(Colors);
+
+        float CurrTime = (float)GlobalEngine->Clock->CurrTime;
+        float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
+        int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
+        RE->UnicolorState = { Lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor) };
+    }
+    */
+
+    float CurrTime = (float)GlobalEngine->Clock->CurrTime;
+    if (CurrTime - LastSwitchTime > StepDurationSeconds)
+    {
+        LastSwitchTime = CurrTime;
+        CurrColor = NextColor;
+        NextColor = GetRandomColorDim();
+    }
+    float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
+    RE->UnicolorState = { Lerp(CurrColor, NextColor, Factor) };
+}
+
 bool UBGameImpl::Init()
 {
     bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
 
+    BG.Init(this);
     BulletMgr.Init(this);
     Player.Init(this);
     Boss.Init(this);
@@ -403,6 +502,7 @@ bool UBGameImpl::Init()
 
 void UBGameImpl::Update()
 {
+    BG.Update(this);
     BulletMgr.Update(this);
     Player.Update(this);
     Boss.Update(this);
@@ -418,6 +518,7 @@ bool UBGameImpl::Term()
     Player.Term(this);
     Boss.Term(this);
     BulletMgr.Term(this);
+    BG.Term(this);
 
     bool bResult = Gfx.Term();
     return bResult;

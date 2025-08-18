@@ -90,7 +90,6 @@ void MeshStateT::SafeRelease()
     ::SafeRelease(IxBuffer);
 }
 
-void GetClearColor(v4f& OutClearColor);
 int CompileShaderHLSL
 (
     FileContentsT* FileHLSL,
@@ -236,8 +235,25 @@ void UBG_Gfx_DX11::DrawBegin()
     Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
     Context->OMSetBlendState(DefaultBlendState, nullptr, 0xFFFFFFFF);
 
-    v4f ClearColor = { };
-    GetClearColor(ClearColor);
+    v4f ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+    static constexpr bool bEnableSeizureDebug = true;
+    if (bEnableSeizureDebug)
+    {
+        constexpr v4f Black{ 0.0f, 0.0f, 0.0f, 1.0f };
+        constexpr v4f Pink{ 1.0f, 73.0f / 255.0f, 173.0f / 255.0f, 1.0f };
+        constexpr float StepDurationSeconds = 1.0f;
+
+        static float LastSwitchTime = 0.0f;
+        static bool bBlack = true;
+        float CurrTime = (float)GlobalEngine->Clock->CurrTime;
+        if ((CurrTime - LastSwitchTime) > StepDurationSeconds)
+        {
+            LastSwitchTime = CurrTime;
+            bBlack = !bBlack;
+        }
+        ClearColor = bBlack ? Black : Pink;
+    }
+
     Context->ClearRenderTargetView(RenderTargetView, (float*)&ClearColor);
     Context->ClearDepthStencilView(DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
@@ -404,65 +420,6 @@ bool UBG_Gfx_DX11::Term()
     SafeRelease(Device);
 
     return bResult;
-}
-
-void GetClearColor(v4f& OutClearColor)
-{
-    enum struct ClearColorMode
-    {
-        SOLID,
-        CYCLE_COLORS,
-        CYCLE_RANDOM,
-    };
-    constexpr ClearColorMode Mode = ClearColorMode::CYCLE_RANDOM;
-    switch (Mode)
-    {
-        case ClearColorMode::SOLID:
-        {
-            OutClearColor = { 242.0f / 255.0f, 80.0f / 255.0f, 34.0f / 255.0f, 1.0f };
-        } break;
-
-        case ClearColorMode::CYCLE_COLORS:
-        {
-            constexpr v4f Colors[] = {
-                { 1.0f, 0.0f, 0.0f, 1.0f },
-                { 0.0f, 1.0f, 0.0f, 1.0f },
-                { 0.0f, 0.0f, 0.1f, 1.0f },
-                { 1.0f, 1.0f, 1.0f, 1.0f },
-                { 0.0f, 0.0f, 0.0f, 1.0f }
-            };
-            constexpr float StepDurationSeconds = 2.0f;
-            constexpr size_t NumColors = ARRAY_SIZE(Colors);
-
-            float CurrTime = (float)GlobalEngine->Clock->CurrTime;
-            float Factor = (CurrTime / StepDurationSeconds) - (float)(int)(CurrTime / StepDurationSeconds);
-            int StepNumber = (int)(CurrTime / StepDurationSeconds) % NumColors;
-            OutClearColor = Lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor);
-        } break;
-
-        case ClearColorMode::CYCLE_RANDOM:
-        {
-            static v4f CurrColor = GetRandomColorDim();
-            static v4f NextColor = GetRandomColorDim();
-            static float LastSwitchTime = 0.0f;
-            constexpr float StepDurationSeconds = 2.0f;
-
-            float CurrTime = (float)GlobalEngine->Clock->CurrTime;
-            if (CurrTime - LastSwitchTime > StepDurationSeconds)
-            {
-                LastSwitchTime = CurrTime;
-                CurrColor = NextColor;
-                NextColor = GetRandomColorDim();
-            }
-            float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
-            OutClearColor = Lerp(CurrColor, NextColor, Factor);
-        } break;
-
-        default:
-        {
-            OutClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-        } break;
-    }
 }
 
 int CompileShaderHLSL
