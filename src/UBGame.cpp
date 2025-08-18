@@ -2,6 +2,12 @@
 
 struct UBGameImpl;
 
+struct AABB
+{
+    v2f Min;
+    v2f Max;
+};
+
 struct PlayerShip
 {
     TextureStateID idShipTexture;
@@ -19,6 +25,10 @@ struct BossShip
 {
     MeshStateID idShipMesh;
     RenderEntityID idShip;
+    MeshStateID idBoundingBoxMesh;
+    RenderEntityID idBoundingBox;
+    AABB BoundingBox;
+    f32 Scale;
 
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
@@ -60,14 +70,12 @@ struct BulletManager
 
 struct Background
 {
+    MeshStateID idBackgroundMesh;
+    RenderEntityID idBackground;
     v4f CurrColor;
     v4f NextColor;
     f32 LastSwitchTime;
     f32 StepDurationSeconds;
-
-
-    MeshStateID idBackgroundMesh;
-    RenderEntityID idBackground;
 
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
@@ -182,6 +190,8 @@ void BossShip::Init(UBGameImpl* Game)
     constexpr float AverageRadius = 10.0f;
     constexpr float RadiusVariance = 5.0f;
 
+    BoundingBox = { {}, {} };
+    Scale = 10.0f;
     // Boss mesh:
     {
         VxMin BossVerts[BossNumVerts] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -189,7 +199,14 @@ void BossShip::Init(UBGameImpl* Game)
         {
             float Radius = AverageRadius + ((GetRandomFloatNorm() - 0.5f) * RadiusVariance);
             float Angle = (float)(Idx - 1) / (float)(BossNumVerts - 1) * fTAU;
-            BossVerts[Idx] = { Radius * cosf(Angle), Radius * sinf(Angle), 0.0f, 1.0f };
+            float X = Radius * cosf(Angle);
+            float Y = Radius * sinf(Angle);
+            BossVerts[Idx] = { X, Y, 0.0f, 1.0f };
+
+            if (X < BoundingBox.Min.X) { BoundingBox.Min.X = X; }
+            else if (X > BoundingBox.Max.X) { BoundingBox.Max.X = X; }
+            if (Y < BoundingBox.Min.Y) { BoundingBox.Min.Y = Y; }
+            else if (Y > BoundingBox.Max.Y) { BoundingBox.Max.Y = Y; }
         }
 
         u32 BossInds[BossNumTris * 3] = {};
@@ -203,10 +220,67 @@ void BossShip::Init(UBGameImpl* Game)
         idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
         ASSERT(idShipMesh);
     }
+    // Boss BoundingBox mesh:
+    {
+        constexpr int NumVerts = 16;
+        constexpr int NumTris = 8;
+        constexpr int NumInds = NumTris * 3;
+        VxMin BossVertsBB[NumVerts] = {};
+        constexpr f32 WidthBB = 0.25f;
+        BossVertsBB[0] = { BoundingBox.Min.X - WidthBB, BoundingBox.Max.Y, 0.5f, 1.0f };
+        BossVertsBB[1] = { BoundingBox.Min.X, BoundingBox.Max.Y, 0.5f, 1.0f };
+        BossVertsBB[2] = { BoundingBox.Min.X - WidthBB, BoundingBox.Min.Y, 0.5f, 1.0f };
+        BossVertsBB[3] = { BoundingBox.Min.X, BoundingBox.Min.Y, 0.5f, 1.0f };
+
+        BossVertsBB[4] = { BoundingBox.Max.X, BoundingBox.Max.Y, 0.5f, 1.0f };
+        BossVertsBB[5] = { BoundingBox.Max.X + WidthBB, BoundingBox.Max.Y, 0.5f, 1.0f };
+        BossVertsBB[6] = { BoundingBox.Max.X, BoundingBox.Min.Y, 0.5f, 1.0f };
+        BossVertsBB[7] = { BoundingBox.Max.X + WidthBB, BoundingBox.Min.Y, 0.5f, 1.0f };
+
+        BossVertsBB[8] = { BoundingBox.Min.X, BoundingBox.Max.Y + WidthBB, 0.5f, 1.0f };
+        BossVertsBB[9] = { BoundingBox.Max.X, BoundingBox.Max.Y + WidthBB, 0.5f, 1.0f };
+        BossVertsBB[10] = { BoundingBox.Min.X, BoundingBox.Max.Y, 0.5f, 1.0f };
+        BossVertsBB[11] = { BoundingBox.Max.X, BoundingBox.Max.Y, 0.5f, 1.0f };
+
+        BossVertsBB[12] = { BoundingBox.Min.X, BoundingBox.Min.Y, 0.5f, 1.0f };
+        BossVertsBB[13] = { BoundingBox.Max.X, BoundingBox.Min.Y, 0.5f, 1.0f };
+        BossVertsBB[14] = { BoundingBox.Min.X, BoundingBox.Min.Y - WidthBB, 0.5f, 1.0f };
+        BossVertsBB[15] = { BoundingBox.Max.X, BoundingBox.Min.Y - WidthBB, 0.5f, 1.0f };
+
+        u32 BossIndsBB[NumInds] = {
+            0, 1, 2,
+            1, 3, 2,
+
+            4, 5, 6,
+            5, 7, 6,
+
+            8, 9, 10,
+            9, 11, 10,
+
+            12, 13, 14,
+            13, 15, 14
+        };
+
+        idBoundingBoxMesh = Game->Gfx.CreateMesh
+        (
+            sizeof(VxMin),
+            ARRAY_SIZE(BossVertsBB), BossVertsBB,
+            ARRAY_SIZE(BossIndsBB), BossIndsBB
+        );
+        ASSERT(idBoundingBoxMesh);
+
+        RenderEntity BoundingBoxRenderData = {};
+        BoundingBoxRenderData.bVisible = true;
+        BoundingBoxRenderData.World = m4f::Scale(Scale, Scale, 1.0f); // m4f::Scale(50.0f, 50.0f, 1.0f);
+        BoundingBoxRenderData.Type = DrawType::Unicolor;
+        BoundingBoxRenderData.idMesh = idBoundingBoxMesh;
+        BoundingBoxRenderData.UnicolorState = { { 1.0f, 1.0f, 0.0f, 1.0f } };
+        idBoundingBox = Game->Gfx.CreateEntity(BoundingBoxRenderData);
+    }
 
     RenderEntity BossShipData = {};
     BossShipData.bVisible = true;
-    BossShipData.World = m4f::Scale(10.0f, 10.0f, 1.0);
+    BossShipData.World = m4f::Scale(Scale, Scale, 1.0);
     BossShipData.Type = DrawType::Unicolor;
     BossShipData.idMesh = idShipMesh;
     BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
@@ -216,6 +290,8 @@ void BossShip::Init(UBGameImpl* Game)
 
 void BossShip::Term(UBGameImpl* Game)
 {
+    Game->Gfx.DestroyEntity(idBoundingBox);
+    Game->Gfx.DestroyMesh(idBoundingBoxMesh);
     Game->Gfx.DestroyEntity(idShip);
     Game->Gfx.DestroyMesh(idShipMesh);
 }
