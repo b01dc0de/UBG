@@ -86,6 +86,8 @@
   <ItemGroup>
     <ClCompile Include="src\Clock.cpp" />
     <ClCompile Include="src\Collision.cpp" />
+    <ClCompile Include="src\Game\Demo.cpp" />
+    <ClCompile Include="src\Game\Impl.cpp" />
     <ClCompile Include="src\UBGame.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Math.cpp" />
@@ -100,6 +102,8 @@
     <ClInclude Include="src\Array.h" />
     <ClInclude Include="src\Clock.h" />
     <ClInclude Include="src\Collision.h" />
+    <ClInclude Include="src\Game\Demo.h" />
+    <ClInclude Include="src\Game\Impl.h" />
     <ClInclude Include="src\ListID.h" />
     <ClInclude Include="src\UBGame.h" />
     <ClInclude Include="src\Input.h" />

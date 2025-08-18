@@ -7,6 +7,9 @@
     <Filter Include="src\hlsl">
       <UniqueIdentifier>{8d32feef-2664-444e-a7fd-bfd281caccaa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Game">
+      <UniqueIdentifier>{af6713bb-10a9-4f09-83f3-69619fa97a45}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\UBG.cpp">
@@ -41,6 +44,12 @@
     </ClCompile>
     <ClCompile Include="src\Collision.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Impl.cpp">
+      <Filter>src\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Demo.cpp">
+      <Filter>src\Game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -91,6 +100,12 @@
     </ClInclude>
     <ClInclude Include="src\Collision.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Impl.h">
+      <Filter>src\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Demo.h">
+      <Filter>src\Game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
