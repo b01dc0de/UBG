@@ -1,10 +1,8 @@
 #ifndef LISTID_H
 #define LISTID_H
 
-// TODO: Would be nice to implement a generational index as well to verify
-//       That a current ID value is the one expected
-
-// TODO: Make ID == 0 an invalid value, so valid IDs are in the range [1, NumIDs]
+// TODO: Implement a generational index as well to verify
+//       A given current ID value is still the one expected
 
 using TypeID = u64;
 static constexpr TypeID DefaultNumIDs = 1024;

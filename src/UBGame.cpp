@@ -15,6 +15,7 @@ struct PlayerShip
     MeshStateID idShipMesh;
     RenderEntityID idShip;
     v2f Pos;
+    f32 Momentum;
     float Scale;
     float Angle;
 
@@ -105,8 +106,8 @@ struct UBGameImpl
 void PlayerShip::Init(UBGameImpl* Game)
 {
     Pos = { (float)GlobalEngine->Width * -0.25f, (float)GlobalEngine->Height * +0.25f };
+    Momentum = 0.0f;
     Scale = 25.0f;
-    //Scale = 200.0f;
     Angle = 0.0f;
 
     RenderEntity PlayerShipData = {};
@@ -118,7 +119,7 @@ void PlayerShip::Init(UBGameImpl* Game)
         constexpr size_t NumVerts = 15;
         constexpr size_t NumTris = 7;
         constexpr size_t NumInds = NumTris * 3;
-        static constexpr bool bCloseBox = false;
+        static constexpr bool bCloseBox = true;
 
         float AngleStride = fPI * 2.0f / 3.0f;
         float AngleA = 0.0f;
@@ -205,16 +206,38 @@ void PlayerShip::Update(UBGameImpl* Game)
     bool bKeyA = GlobalEngine->Input->Keyboard.GetKey('A');
     bool bKeyS = GlobalEngine->Input->Keyboard.GetKey('S');
     bool bKeyD = GlobalEngine->Input->Keyboard.GetKey('D');
-    constexpr f32 fSpeed = 1000.0f;
-    f32 AdjSpeed = fSpeed * (f32)GlobalEngine->Clock->LastFrameDuration;
-    if (bKeyW != bKeyS)
+    constexpr f32 fMaxSpeed = 1000.0f;
+    f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
+    bool bMoving = false;
+    v2f Vel = { 0.0f, 0.0f };
+    if (bKeyW != bKeyS && bKeyA != bKeyD)
     {
-        Pos.Y += bKeyW ? AdjSpeed : -AdjSpeed;
+        bMoving = true;
+        f32 AdjMom = Momentum / sqrtf(2.0f);
+        Vel.Y = (bKeyS ? -AdjMom: +AdjMom) * fMaxSpeed;
+        Vel.X = (bKeyA ? -AdjMom: +AdjMom) * fMaxSpeed;
     }
-    if (bKeyA != bKeyD)
+    else if (bKeyW != bKeyS)
     {
-        Pos.X += bKeyD ? AdjSpeed : -AdjSpeed;
+        bMoving = true;
+        Vel.Y = (bKeyS ? -Momentum : +Momentum) * fMaxSpeed;
     }
+    else if (bKeyA != bKeyD)
+    {
+        bMoving = true;
+        Vel.X = (bKeyA ? -Momentum : +Momentum) * fMaxSpeed;
+    }
+
+    if (bMoving)
+    {
+        Momentum = Clamp(0.0f, 1.0f, Momentum + DeltaTime * 2.0f);
+    }
+    else
+    {
+        Momentum = Clamp(0.0f, 1.0f, Momentum - DeltaTime * 0.1f);
+    }
+    Pos.X += Vel.X * DeltaTime;
+    Pos.Y += Vel.Y * DeltaTime;
     float HalfScale = Scale * 0.5f;
     float HalfWidth = GlobalEngine->Width * 0.5f;
     float HalfHeight = GlobalEngine->Height * 0.5f;
@@ -241,7 +264,7 @@ void PlayerShip::Update(UBGameImpl* Game)
 
     static f32 LastBulletSpawn = 0.0f;
     static constexpr f32 SecondsPerBullet = 0.25f;
-    static constexpr f32 Speed = 25.0f;
+    static constexpr f32 Speed = 100.0f;
     f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
     if (GlobalEngine->Input->Mouse.LeftButton)
     {
@@ -372,25 +395,15 @@ void BossShip::Term(UBGameImpl* Game)
 void BossShip::Update(UBGameImpl* Game)
 {
     static f32 LastBulletSpawn = 0.0f;
-    static constexpr f32 SecondsPerBullet = 2.5f;
-    static s32 SpawnDir = 0;
-    static constexpr f32 Speed = 50.0f;
+    static constexpr f32 SecondsPerBullet = 0.25f;
+    static f32 SpawnDir = 0.0f;
+    static f32 TurnSpeed = SecondsPerBullet * fPI;
+    static constexpr f32 Speed = 100.0f;
     f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
     if ((CurrTime - LastBulletSpawn) > SecondsPerBullet)
     {
-        v2f Dir = {};
-        switch (SpawnDir)
-        {
-            case 0: { Dir = { 0.0f, +Speed }; } break;
-            case 1: { Dir = { +Speed, +Speed }; } break;
-            case 2: { Dir = { +Speed, 0.0f }; } break;
-            case 3: { Dir = { +Speed, -Speed }; } break;
-            case 4: { Dir = { 0.0f, -Speed }; } break;
-            case 5: { Dir = { -Speed, -Speed }; } break;
-            case 6: { Dir = { -Speed, 0.0f }; } break;
-            case 7: { Dir = { -Speed, +Speed }; } break;
-        }
-        SpawnDir = (SpawnDir + 1) % 8;
+        v2f Dir = { cosf(SpawnDir) * Speed, sinf(SpawnDir) * Speed };
+        SpawnDir -= TurnSpeed;
         Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
         LastBulletSpawn = CurrTime;
     }
@@ -401,7 +414,7 @@ bool BulletManager::IsOffscreen(PerBulletData& Bullet)
     float HalfWidth = GlobalEngine->Width * 0.5f;
     float HalfHeight = GlobalEngine->Height * 0.5f;
     return Bullet.Pos.X < -HalfWidth || Bullet.Pos.X > +HalfWidth ||
-        Bullet.Pos.X < -HalfHeight || Bullet.Pos.Y > +HalfHeight;
+        Bullet.Pos.Y < -HalfHeight || Bullet.Pos.Y > +HalfHeight;
 }
 
 void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel)
