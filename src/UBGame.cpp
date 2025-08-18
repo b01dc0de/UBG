@@ -10,7 +10,9 @@ struct AABB
 
 struct PlayerShip
 {
+    static constexpr bool bUseShipMesh = true;
     TextureStateID idShipTexture;
+    MeshStateID idShipMesh;
     RenderEntityID idShip;
     v2f Pos;
     float Scale;
@@ -53,11 +55,14 @@ struct PerBulletData
 struct BulletManager
 {
     static constexpr bool bDebugPrint = false;
-    static constexpr int MaxBullets = 64;
+    static constexpr int MaxBulletsPlayer = 256;
+    static constexpr int MaxBulletsBoss = 256;
     static constexpr v4f PlayerBulletColor = { 0.0f, 1.0f, 0.0f, 1.0f };
     static constexpr v4f BossBulletColor = { 1.0f, 0.0f, 0.0f, 1.0f };
 
     MeshStateID idBulletMesh;
+    int NumBulletsPlayer;
+    int NumBulletsBoss;
     DArray<PerBulletData> ActiveBullets;
     DArray<RenderEntityID> InactiveBullets;
 
@@ -101,28 +106,96 @@ void PlayerShip::Init(UBGameImpl* Game)
 {
     Pos = { (float)GlobalEngine->Width * -0.25f, (float)GlobalEngine->Height * +0.25f };
     Scale = 25.0f;
+    //Scale = 200.0f;
     Angle = 0.0f;
 
-    ImageT PlayerShipTextureImage = {};
-    LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
-    ASSERT(PlayerShipTextureImage.PxBuffer);
     RenderEntity PlayerShipData = {};
     PlayerShipData.bVisible = true;
     PlayerShipData.World = m4f::Identity();
-    PlayerShipData.Type = DrawType::Texture;
-    PlayerShipData.idMesh = Game->Gfx.idQuadTexture;
-    idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
-    ASSERT(idShipTexture);
-    PlayerShipData.TextureState.idTexture = idShipTexture;
-    PlayerShipData.TextureState.idSampler = Game->Gfx.idDefaultSampler;
+
+    if (bUseShipMesh)
+    {
+        constexpr size_t NumVerts = 15;
+        constexpr size_t NumTris = 7;
+        constexpr size_t NumInds = NumTris * 3;
+        static constexpr bool bCloseBox = false;
+
+        float AngleStride = fPI * 2.0f / 3.0f;
+        float AngleA = 0.0f;
+        float AngleB = AngleA + AngleStride;
+        float AngleC = AngleB + AngleStride;
+        v2f PosA = { cosf(AngleA), sinf(AngleA) };
+        v2f PosB = { cosf(AngleB), sinf(AngleB) };
+        v2f PosC = { cosf(AngleC), sinf(AngleC) };
+        float SideWidth = 1.0f - PosB.Y;
+        float BoxTopY = bCloseBox ? PosB.Y : PosB.Y + SideWidth;
+        float BoxLeftX = bCloseBox ? PosB.X : PosA.X - 2.0f;
+        float BoxBotY = bCloseBox ? PosC.Y : PosC.Y - SideWidth;
+        VxMin Verts[NumVerts] = { };
+        Verts[0] = { PosA.X, PosA.Y, 0.0f, 1.0f };
+        Verts[1] = { PosB.X, PosB.Y, 0.0f, 1.0f };
+        Verts[2] = { PosC.X, PosC.Y, 0.0f, 1.0f };
+
+        Verts[3] = { BoxLeftX, BoxTopY + SideWidth, 0.0f, 1.0f };
+        Verts[4] = { PosA.X, BoxTopY + SideWidth, 0.0f, 1.0f };
+        Verts[5] = { BoxLeftX, BoxTopY, 0.0f, 1.0f };
+        Verts[6] = { PosA.X, BoxTopY, 0.0f, 1.0f };
+
+        Verts[7] = { BoxLeftX, BoxBotY, 0.0f, 1.0f };
+        Verts[8] = { PosA.X, BoxBotY, 0.0f, 1.0f };
+        Verts[9] = { BoxLeftX, BoxBotY - SideWidth, 0.0f, 1.0f };
+        Verts[10] = { PosA.X, BoxBotY - SideWidth, 0.0f, 1.0f };
+
+        Verts[11] = { BoxLeftX - SideWidth, PosB.Y + SideWidth, 0.0f, 1.0f };
+        Verts[12] = { BoxLeftX, PosB.Y + SideWidth, 0.0f, 1.0f };
+        Verts[13] = { BoxLeftX - SideWidth, PosC.Y - SideWidth, 0.0f, 1.0f };
+        Verts[14] = { BoxLeftX, PosC.Y - SideWidth, 0.0f, 1.0f };
+
+        u32 Inds[NumInds] = {
+            0, 2, 1,
+
+            3, 4, 5,
+            4, 6, 5,
+
+            7, 8, 9,
+            8, 10, 9,
+
+            11, 12, 13,
+            12, 14, 13
+        };
+        idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), NumVerts, Verts, NumInds, Inds);
+        ASSERT(idShipMesh);
+        PlayerShipData.Type = DrawType::Unicolor;
+        PlayerShipData.idMesh = idShipMesh;
+        PlayerShipData.UnicolorState = { v4f{ 1.0f, 1.0f, 1.0f, 1.0f } };
+    }
+    else
+    {
+        ImageT PlayerShipTextureImage = {};
+        LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
+        ASSERT(PlayerShipTextureImage.PxBuffer);
+        PlayerShipData.Type = DrawType::Texture;
+        PlayerShipData.idMesh = Game->Gfx.idQuadTexture;
+        idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
+        ASSERT(idShipTexture);
+        PlayerShipData.TextureState.idTexture = idShipTexture;
+        PlayerShipData.TextureState.idSampler = Game->Gfx.idDefaultSampler;
+        delete[] PlayerShipTextureImage.PxBuffer;
+    }
     idShip = Game->Gfx.CreateEntity(PlayerShipData);
     ASSERT(idShip);
-    delete[] PlayerShipTextureImage.PxBuffer;
 }
 
 void PlayerShip::Term(UBGameImpl* Game)
 {
-    Game->Gfx.DestroyTexture(idShipTexture);
+    if (bUseShipMesh)
+    {
+        Game->Gfx.DestroyMesh(idShipMesh);
+    }
+    else
+    {
+        Game->Gfx.DestroyTexture(idShipTexture);
+    }
     Game->Gfx.DestroyEntity(idShip);
 }
 
@@ -333,7 +406,8 @@ bool BulletManager::IsOffscreen(PerBulletData& Bullet)
 
 void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel)
 {
-    if (ActiveBullets.Num < MaxBullets)
+    if ((Type == BulletType::Player && NumBulletsPlayer < MaxBulletsPlayer) ||
+        (Type == BulletType::Boss && NumBulletsBoss < MaxBulletsBoss))
     {
         if (InactiveBullets.Num)
         {
@@ -392,6 +466,15 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
                 Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
             }
         }
+
+        if (Type == BulletType::Player)
+        {
+            NumBulletsPlayer++;
+        }
+        else
+        {
+            NumBulletsBoss++;
+        }
     }
     else
     {
@@ -409,6 +492,9 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
 
 void BulletManager::Init(UBGameImpl* Game)
 {
+    NumBulletsPlayer = 0;
+    NumBulletsBoss = 0;
+
     // Bullet mesh:
     {
         constexpr u32 NumPoints = 8;
@@ -469,6 +555,14 @@ void BulletManager::Update(UBGameImpl* Game)
                 Outf("\tType: %s\n", Bullet.Type == BulletType::Player ? "Player" : "Boss");
                 Outf("\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
                 Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
+            }
+            if (Bullet.Type == BulletType::Player)
+            {
+                NumBulletsPlayer--;
+            }
+            else
+            {
+                NumBulletsBoss--;
             }
             RenderEntityID idInactiveBullet = Bullet.ID;
             BulletRE->bVisible = false;
