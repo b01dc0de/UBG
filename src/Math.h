@@ -14,8 +14,10 @@ f32 Min(f32 A, f32 B);
 f32 Max(f32 A, f32 B);
 f32 Clamp(f32 Min, f32 Max, f32 C);
 
-v2i Negate(v2i A);
-v2i operator-(v2i A);
+bool Equals(v2i A, v2i B);
+bool NotEquals(v2i A, v2i B);
+bool operator==(v2i A, v2i B);
+bool operator!=(v2i A, v2i B);
 
 v2i Negate(v2i A);
 v2f Negate(v2f A);

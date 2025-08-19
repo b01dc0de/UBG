@@ -1,6 +1,15 @@
 #include "../UBG.h"
 #include "Impl.h"
 
+/*
+    TODO:
+        - PlayerShip
+            - Implement different aim behaviors:
+                - [X] Mouse
+                - [ ] ArrowKeys
+                - [ ] Auto
+*/
+
 void VisualProgressBar::Init(UBGameImpl* Game, f32 _Progress, v4f _Color, v2f _Pos, v2f _Size)
 {
     Progress = Clamp(0.0f, 1.0f, _Progress);
@@ -70,6 +79,8 @@ void PlayerShip::Init(UBGameImpl* Game)
     Vel = { 0.0f, 0.0f };
     Scale = 25.0f;
     Angle = 0.0f;
+    Dir = { };
+    TurningProgress = 0.0f;
     Health = MaxHealth;
     float HalfScale = Scale * 0.5f;
     BoundingBox =
@@ -171,10 +182,11 @@ void PlayerShip::Term(UBGameImpl* Game)
     Healthbar.Term(Game);
 }
 
-void PlayerShip::Update(UBGameImpl* Game)
+void PlayerShip::HandleInput(UBGameImpl* Game)
 {
-    f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
+    UNUSED_VAR(Game);
 
+    f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
     bool bKeyUp = GlobalEngine->Input->Keyboard.GetKey('W');
     bool bKeyLeft = GlobalEngine->Input->Keyboard.GetKey('A');
     bool bKeyDown = GlobalEngine->Input->Keyboard.GetKey('S');
@@ -217,36 +229,113 @@ void PlayerShip::Update(UBGameImpl* Game)
         { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
     };
 
-    if (!GlobalEngine->Input->Mouse.bOffscreen)
+    // Update ship angle
+    switch (AimBehavior)
     {
-        v2f MousePos = { GlobalEngine->Input->Mouse.MouseX - HalfWidth, GlobalEngine->Input->Mouse.MouseY - HalfHeight };
-        v2f Diff = { MousePos.X - Pos.X, MousePos.Y + Pos.Y };
-        if (fIsZero(Length(Diff)))
+        case AimControls::Mouse:
         {
-            Angle = 0.0f;
-        }
-        else
+            if (!GlobalEngine->Input->Mouse.bOffscreen)
+            {
+                v2f MousePos = { GlobalEngine->Input->Mouse.MouseX - HalfWidth, GlobalEngine->Input->Mouse.MouseY - HalfHeight };
+                v2f Diff = { MousePos.X - Pos.X, MousePos.Y + Pos.Y };
+                if (fIsZero(Length(Diff)))
+                {
+                    Angle = 0.0f;
+                }
+                else
+                {
+                    Angle = atan2f(Diff.Y, Diff.X);
+                }
+            }
+            else
+            {
+                // Keep angle the same
+            }
+        } break;
+
+        case AimControls::Keys:
         {
-            Angle = atan2f(Diff.Y, Diff.X);
-        }
+            static constexpr f32 TurnSpeed = fPI * (1.0f / 12.0f);
+
+            bool bArrowUp = GlobalEngine->Input->Keyboard.GetKey(VK_UP);
+            bool bArrowDown = GlobalEngine->Input->Keyboard.GetKey(VK_DOWN);
+            bool bArrowLeft = GlobalEngine->Input->Keyboard.GetKey(VK_LEFT);
+            bool bArrowRight = GlobalEngine->Input->Keyboard.GetKey(VK_RIGHT);
+
+            // Get new dir from input
+            v2i InputDir = {};
+            if (bArrowUp != bArrowDown) { InputDir.Y = bArrowUp ? -1 : +1; }
+            if (bArrowLeft != bArrowRight) { InputDir.X = bArrowLeft ? -1 : +1; }
+
+            // If there is new input AND new dir is different
+            //  - Set new dir
+            //  - Start turning to new dir
+            if ((InputDir.X || InputDir.Y) && InputDir != Dir)
+            {
+                Dir = InputDir;
+                TurningProgress = 0.0f;
+            }
+            else
+            {
+                TurningProgress = Clamp(0.0f, 1.0f, TurningProgress + TurnSpeed * DeltaTime);
+            }
+            float AngleDir = atan2f((float)Dir.Y, (float)Dir.X);
+            Angle = Lerp(Angle, AngleDir, TurningProgress);
+        } break;
+
+        case AimControls::Auto:
+        {
+            Angle = atan2f(Pos.Y, -Pos.X);
+        } break;
+
+        default:
+        {
+            ASSERT(false);
+        } break;
     }
 
-    RenderEntity* pRent = Game->Gfx.GetEntity(idShip);
-    ASSERT(pRent);
-    pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
-
+    // Spawn bullets
     static f32 LastBulletSpawn = 0.0f;
     static constexpr f32 SecondsPerBullet = 0.25f;
     static constexpr f32 Speed = 100.0f;
     f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
-    if (GlobalEngine->Input->Mouse.LeftButton)
+    bool bShoot = false;
+    switch (AimBehavior)
     {
-        if ((CurrTime - LastBulletSpawn) > SecondsPerBullet)
+        case AimControls::Mouse:
         {
-            v2f Dir = { cosf(Angle) * Speed, -sinf(Angle) * Speed };
-            Game->BulletMgr.NewBullet(Game, BulletType::Player, Pos, Dir);
-            LastBulletSpawn = CurrTime;
-        }
+            bShoot = GlobalEngine->Input->Mouse.LeftButton;
+        } break;
+
+        case AimControls::Keys:
+        case AimControls::Auto:
+        {
+            bShoot = true;
+        } break;
+
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
+
+    if (bShoot && ((CurrTime - LastBulletSpawn) > SecondsPerBullet))
+    {
+        v2f BulletVel = { cosf(Angle) * Speed, -sinf(Angle) * Speed };
+        v2f BulletPos = Pos + (Norm(BulletVel) * Scale) * 0.75f;
+        Game->BulletMgr.NewBullet(Game, BulletType::Player, BulletPos, BulletVel);
+        LastBulletSpawn = CurrTime;
+    }
+}
+
+void PlayerShip::Update(UBGameImpl* Game)
+{
+    HandleInput(Game);
+
+    { // Update world:
+        RenderEntity* pRent = Game->Gfx.GetEntity(idShip);
+        ASSERT(pRent);
+        pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
     }
 }
 

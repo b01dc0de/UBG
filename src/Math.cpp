@@ -151,6 +151,26 @@ f32 Clamp(f32 Min, f32 Max, f32 C)
     return C;
 }
 
+bool Equals(v2i A, v2i B)
+{
+    return A.X == B.X && A.Y == B.Y;
+}
+
+bool NotEquals(v2i A, v2i B)
+{
+    return !Equals(A, B);
+}
+
+bool operator==(v2i A, v2i B)
+{
+    return Equals(A, B);
+}
+
+bool operator!=(v2i A, v2i B)
+{
+    return NotEquals(A, B);
+}
+
 v2i Negate(v2i A)
 {
     v2i Result = { -A.X, -A.Y };

@@ -20,9 +20,16 @@ struct VisualProgressBar
 
 struct PlayerShip
 {
+    enum struct AimControls
+    {
+        Mouse,
+        Keys,
+        Auto
+    };
     static constexpr bool bUseShipMesh = false;
     static constexpr f32 fMaxSpeed = 750.0f;
     static constexpr f32 MaxHealth = 100.0f;
+    static constexpr AimControls AimBehavior = AimControls::Auto;
 
     TextureStateID idShipTexture;
     MeshStateID idShipMesh;
@@ -32,12 +39,15 @@ struct PlayerShip
     v2f Vel;
     f32 Scale;
     f32 Angle;
+    v2i Dir;
+    f32 TurningProgress;
     f32 Health;
     AABB BoundingBox;
 
     void Hit(UBGameImpl* Game);
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
+    void HandleInput(UBGameImpl* Game);
     void Update(UBGameImpl* Game);
 };
 
