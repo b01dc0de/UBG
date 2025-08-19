@@ -1,15 +1,6 @@
 #include "../UBG.h"
 #include "Impl.h"
 
-/*
-    TODO:
-        - PlayerShip
-            - Implement different aim behaviors:
-                - [X] Mouse
-                - [ ] ArrowKeys
-                - [ ] Auto
-*/
-
 void VisualProgressBar::Init(UBGameImpl* Game, f32 _Progress, v4f _Color, v2f _Pos, v2f _Size)
 {
     Progress = Clamp(0.0f, 1.0f, _Progress);
@@ -187,10 +178,10 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
     UNUSED_VAR(Game);
 
     f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
-    bool bKeyUp = GlobalEngine->Input->Keyboard.GetKey('W');
-    bool bKeyLeft = GlobalEngine->Input->Keyboard.GetKey('A');
-    bool bKeyDown = GlobalEngine->Input->Keyboard.GetKey('S');
-    bool bKeyRight = GlobalEngine->Input->Keyboard.GetKey('D');
+    bool bKeyUp = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_W);
+    bool bKeyLeft = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_A);
+    bool bKeyDown = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_S);
+    bool bKeyRight = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_D);
     // Handle movement input
     {
         static constexpr f32 fAcclFactor = 2.0f;
@@ -257,10 +248,10 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
         {
             static constexpr f32 TurnSpeed = fPI * (1.0f / 12.0f);
 
-            bool bArrowUp = GlobalEngine->Input->Keyboard.GetKey(VK_UP);
-            bool bArrowDown = GlobalEngine->Input->Keyboard.GetKey(VK_DOWN);
-            bool bArrowLeft = GlobalEngine->Input->Keyboard.GetKey(VK_LEFT);
-            bool bArrowRight = GlobalEngine->Input->Keyboard.GetKey(VK_RIGHT);
+            bool bArrowUp = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_ARROW_UP);
+            bool bArrowDown = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_ARROW_DOWN);
+            bool bArrowLeft = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_ARROW_LEFT);
+            bool bArrowRight = GlobalEngine->Input->Keyboard.GetKey(UBG_KEY_ARROW_RIGHT);
 
             // Get new dir from input
             v2i InputDir = {};

@@ -1,6 +1,6 @@
 #include "UBG.h" // Includes Input.h
 
-bool KeyboardState::GetKey(int KeyCode)
+bool KeyboardState::GetKey(UBGKeyCode KeyCode)
 {
     for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)
     {
@@ -12,18 +12,18 @@ bool KeyboardState::GetKey(int KeyCode)
     return false;
 }
 
-void KeyboardState::SetKeyUp(int Key)
+void KeyboardState::SetKeyUp(UBGKeyCode Key)
 {
     for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)
     {
         if (KeysPressed[KeyIdx] == Key)
         {
-            KeysPressed[KeyIdx] = 0;
+            KeysPressed[KeyIdx] = UBG_KEY_NONE;
         }
     }
 }
 
-void KeyboardState::SetKeyDown(int Key)
+void KeyboardState::SetKeyDown(UBGKeyCode Key)
 {
     int FirstZeroIdx = -1;
     bool bFound = false;
@@ -49,7 +49,7 @@ KeyboardState::KeyboardState()
 {
     for (int Idx = 0; Idx < MaxNumKeys; Idx++)
     {
-        KeysPressed[Idx] = 0;
+        KeysPressed[Idx] = UBG_KEY_NONE;
     }
 }
 
