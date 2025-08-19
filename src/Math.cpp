@@ -158,6 +158,28 @@ v3f Add(v3f A, v3f B)
     return Result;
 }
 
+v2f operator+(v2f A, v2f B)
+{
+    return Add(A, B);
+}
+
+v3f operator+(v3f A, v3f B)
+{
+    return Add(A, B);
+}
+
+v2f& operator+=(v2f& A, v2f B)
+{
+    A = Add(A, B);
+    return A;
+}
+
+v3f& operator+=(v3f& A, v3f B)
+{
+    A = Add(A, B);
+    return A;
+}
+
 v2f Subtract(v2f A, v2f B)
 {
     v2f Result = { A.X - B.X, A.Y - B.Y };
@@ -170,16 +192,6 @@ v3f Subtract(v3f A, v3f B)
     return Result;
 }
 
-v2f operator+(v2f A, v2f B)
-{
-    return Add(A, B);
-}
-
-v3f operator+(v3f A, v3f B)
-{
-    return Add(A, B);
-}
-
 v2f operator-(v2f A, v2f B)
 {
     return Subtract(A, B);
@@ -188,6 +200,86 @@ v2f operator-(v2f A, v2f B)
 v3f operator-(v3f A, v3f B)
 {
     return Subtract(A, B);
+}
+
+v2f& operator-=(v2f& A, v2f B)
+{
+    A = Subtract(A, B);
+    return A;
+}
+
+v3f& operator-=(v3f& A, v3f B)
+{
+    A = Subtract(A, B);
+    return A;
+}
+
+v2f Mult(v2f A, f32 S)
+{
+    v2f Result = { A.X * S, A.Y * S };
+    return Result;
+}
+
+v3f Mult(v3f A, f32 S)
+{
+    v3f Result = { A.X * S, A.Y * S, A.Z * S };
+    return Result;
+}
+
+v2f operator*(v2f A, f32 S)
+{
+    return Mult(A, S);
+}
+
+v3f operator*(v3f A, f32 S)
+{
+    return Mult(A, S);
+}
+
+v2f& operator*=(v2f& A, f32 S)
+{
+    A = Mult(A, S);
+    return A;
+}
+
+v3f& operator*=(v3f& A, f32 S)
+{
+    A = Mult(A, S);
+    return A;
+}
+
+v2f Divide(v2f A, f32 S)
+{
+    v2f Result = { A.X / S, A.Y / S };
+    return Result;
+}
+
+v3f Divide(v3f A, f32 S)
+{
+    v3f Result = { A.X / S, A.Y / S, A.Z / S };
+    return Result;
+}
+
+v2f operator/(v2f A, f32 S)
+{
+    return Divide(A, S);
+}
+
+v3f operator/(v3f A, f32 S)
+{
+    return Divide(A, S);
+}
+
+v2f& operator/=(v2f& A, f32 S)
+{
+    A = Divide(A, S);
+    return A;
+}
+
+v3f& operator/=(v3f& A, f32 S)
+{
+    A = Divide(A, S);
+    return A;
 }
 
 f32 LengthSq(v2f V)

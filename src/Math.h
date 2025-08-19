@@ -12,12 +12,31 @@ f32 Clamp(f32 Min, f32 Max, f32 C);
 
 v2f Add(v2f A, v2f B);
 v3f Add(v3f A, v3f B);
-v2f Subtract(v2f A, v2f B);
-v3f Subtract(v3f A, v3f B);
 v2f operator+(v2f A, v2f B);
 v3f operator+(v3f A, v3f B);
+v2f& operator+=(v2f& A, v2f B);
+v3f& operator+=(v3f& A, v3f B);
+
+v2f Subtract(v2f A, v2f B);
+v3f Subtract(v3f A, v3f B);
 v2f operator-(v2f A, v2f B);
 v3f operator-(v3f A, v3f B);
+v2f& operator-=(v2f& A, v2f B);
+v3f& operator-=(v3f& A, v3f B);
+
+v2f Mult(v2f A, f32 S);
+v3f Mult(v3f A, f32 S);
+v2f operator*(v2f A, f32 S);
+v3f operator*(v3f A, f32 S);
+v2f& operator*=(v2f& A, f32 S);
+v3f& operator*=(v3f& A, f32 S);
+
+v2f Divide(v2f A, f32 S);
+v3f Divide(v3f A, f32 S);
+v2f operator/(v2f A, f32 S);
+v3f operator/(v3f A, f32 S);
+v2f& operator/=(v2f& A, f32 S);
+v3f& operator/=(v3f& A, f32 S);
 
 f32 LengthSq(v2f V);
 f32 LengthSq(v3f V);
