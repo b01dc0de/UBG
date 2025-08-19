@@ -20,7 +20,7 @@ struct VisualProgressBar
 
 struct PlayerShip
 {
-    static constexpr bool bUseShipMesh = true;
+    static constexpr bool bUseShipMesh = false;
     static constexpr f32 fMaxSpeed = 750.0f;
     static constexpr f32 MaxHealth = 100.0f;
 
