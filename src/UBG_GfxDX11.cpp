@@ -764,21 +764,30 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         );
         ASSERT(idQuadTexture);
 
-        VxMin QuadVertsUnicolor[] = {
+        /*
+        MeshStateID idQuadUnicolorOrigin;
+
+        VxMin QuadVertsUnicolorOrigin[] = {
             { { -0.5f, +0.5f, +0.5f, 1.0f} },
             { { +0.5f, +0.5f, +0.5f, 1.0f} },
             { { -0.5f, -0.5f, +0.5f, 1.0f} },
             { { +0.5f, -0.5f, +0.5f, 1.0f} },
         };
-        /*
+
+        idQuadUnicolorOrigin = CreateMesh(
+            sizeof(VxMin),
+            ARRAY_SIZE(QuadVertsUnicolorOrigin), QuadVertsUnicolorOrigin,
+            ARRAY_SIZE(QuadInds), QuadInds
+        );
+        ASSERT(idQuadUnicolorOrigin);
+        */
+
         VxMin QuadVertsUnicolor[] = {
             { { 0.0f, 1.0f, +0.5f, 1.0f} },
             { { 1.0f, 1.0f, +0.5f, 1.0f} },
             { { 0.0f, 0.0f, +0.5f, 1.0f} },
             { { 1.0f, 0.0f, +0.5f, 1.0f} },
         };
-        */
-
         idQuadUnicolor = CreateMesh(
             sizeof(VxMin),
             ARRAY_SIZE(QuadVertsUnicolor), QuadVertsUnicolor,

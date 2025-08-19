@@ -5,25 +5,29 @@ struct UBGameImpl;
 
 struct VisualProgressBar
 {
+    static constexpr f32 fPadding = 2.0f;
+    RenderEntityID idBG;
     RenderEntityID idBar;
+    f32 Progress;
     v4f Color;
     v2f Pos;
     v2f Size;
 
-    void Init(UBGameImpl* Game, v4f _Color, v2f _Pos, v2f _Size);
+    void Init(UBGameImpl* Game, f32 _Progress, v4f _Color, v2f _Pos, v2f _Size);
     void Term(UBGameImpl* Game);
-    void Update(UBGameImpl* Game);
+    void Update(UBGameImpl* Game, f32 _Progress);
 };
 
 struct PlayerShip
 {
     static constexpr bool bUseShipMesh = true;
-    static constexpr f32 fMaxSpeed = 750.0f; //1000.0f;
+    static constexpr f32 fMaxSpeed = 750.0f;
+    static constexpr f32 MaxHealth = 100.0f;
+
     TextureStateID idShipTexture;
     MeshStateID idShipMesh;
     RenderEntityID idShip;
-    RenderEntityID idShipHealthbarBG;
-    RenderEntityID idShipHealthbar;
+    VisualProgressBar Healthbar;
     v2f Pos;
     f32 Momentum;
     f32 Scale;
@@ -39,12 +43,13 @@ struct PlayerShip
 
 struct BossShip
 {
+    static constexpr f32 MaxHealth = 100.0f;
+
     MeshStateID idShipMesh;
     RenderEntityID idShip;
     MeshStateID idBoundingBoxMesh;
     RenderEntityID idBoundingBox;
-    RenderEntityID idShipHealthbarBG;
-    RenderEntityID idShipHealthbar;
+    VisualProgressBar Healthbar;
     AABB BoundingBox;
     f32 Scale;
     f32 Health;

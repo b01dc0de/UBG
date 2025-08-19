@@ -1,30 +1,52 @@
 #include "../UBG.h"
 #include "Impl.h"
 
-void VisualProgressBar::Init(UBGameImpl* Game, v4f _Color, v2f _Pos, v2f _Size)
+void VisualProgressBar::Init(UBGameImpl* Game, f32 _Progress, v4f _Color, v2f _Pos, v2f _Size)
 {
-    // TODO:
-    (void)Game;
-    (void)_Color;
-    (void)_Pos;
-    (void)_Size;
+    Progress = Clamp(0.0f, 1.0f, _Progress);
+    Color = _Color;
+    Pos = _Pos;
+    Size = _Size;
 
-    //RenderEntityID idBar;
-    //v4f Color;
-    //v2f Pos;
-    //v2f Size;
+    m4f WorldBG = m4f::Scale(Size.X, Size.Y, 1.0f) * m4f::Trans(Pos.X, Pos.Y, +0.1f);
+    m4f WorldBar = m4f::Scale((Size.X - fPadding * 2.0f) * Progress, Size.Y - fPadding * 2.0f, 1.0f) * m4f::Trans(Pos.X + fPadding, Pos.Y + fPadding, 0.0f);
+
+    RenderEntity RenderData = RenderEntity::Default
+    (
+        WorldBG,
+        DrawType::Unicolor,
+        Game->Gfx.idQuadUnicolor
+    );
+
+    RenderData.UnicolorState = { v4f{ 0.75f, 0.75f, 0.75f, 1.0f } };
+    idBG = Game->Gfx.CreateEntity(RenderData);
+    ASSERT(idBG);
+
+    RenderData.World = WorldBar;
+    RenderData.UnicolorState = { Color };
+    idBar = Game->Gfx.CreateEntity(RenderData);
+    ASSERT(idBar);
 }
 
 void VisualProgressBar::Term(UBGameImpl* Game)
 {
-    // TODO:
-    (void)Game;
+    Game->Gfx.DestroyEntity(idBG);
+    Game->Gfx.DestroyEntity(idBar);
 }
 
-void VisualProgressBar::Update(UBGameImpl* Game)
+void VisualProgressBar::Update(UBGameImpl* Game, f32 _Progress)
 {
-    // TODO:
-    (void)Game;
+    Progress = Clamp(0.0f, 1.0f, _Progress);
+    m4f WorldBG = m4f::Scale(Size.X, Size.Y, 1.0f) * m4f::Trans(Pos.X, Pos.Y, +0.1f);
+    m4f WorldBar = m4f::Scale((Size.X - fPadding * 2.0f) * Progress, Size.Y - fPadding * 2.0f, 1.0f) * m4f::Trans(Pos.X + fPadding, Pos.Y + fPadding, 0.0f);
+
+    RenderEntity* DataBG = Game->Gfx.GetEntity(idBG);
+    ASSERT(DataBG);
+    DataBG->World = WorldBG;
+
+    RenderEntity* DataBar = Game->Gfx.GetEntity(idBar);
+    ASSERT(DataBar);
+    DataBar->World = WorldBar;
 }
 
 void PlayerShip::Hit(UBGameImpl* Game)
@@ -36,6 +58,10 @@ void PlayerShip::Hit(UBGameImpl* Game)
         Term(Game);
         Init(Game);
     }
+    else
+    {
+        Healthbar.Update(Game, Health / MaxHealth);
+    }
 }
 
 void PlayerShip::Init(UBGameImpl* Game)
@@ -44,29 +70,20 @@ void PlayerShip::Init(UBGameImpl* Game)
     Momentum = 0.0f;
     Scale = 25.0f;
     Angle = 0.0f;
-    Health = 100.0f;
+    Health = MaxHealth;
     float HalfScale = Scale * 0.5f;
     BoundingBox =
     {
         { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
         { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
     };
+    constexpr v4f HealthbarColor{ 1.0f, 0.0f, 1.0f, 1.0f };
+    constexpr v2f HealthbarSize{ 100.0f, 25.0f };
+    constexpr v2f HealthbarTopLeftOffset{ HealthbarSize.X * +0.125f, HealthbarSize.Y * -1.5f };
+    v2f HealthbarPos = Add({ (f32)GlobalEngine->Width * -0.5f, (f32)GlobalEngine->Height * +0.5f }, HealthbarTopLeftOffset);
+    Healthbar.Init(Game, Health / MaxHealth, HealthbarColor, HealthbarPos, HealthbarSize);
 
-    {
-        RenderEntity HealthbarData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, Game->Gfx.idQuadUnicolor);
-        HealthbarData.UnicolorState = { { 1.0f, 1.0f, 1.0f, 1.0f } };
-
-        idShipHealthbarBG = Game->Gfx.CreateEntity(HealthbarData);
-        ASSERT(idShipHealthbarBG);
-
-        HealthbarData.UnicolorState = { { 1.0f, 0.0f, 0.0f, 1.0f } };
-        idShipHealthbar = Game->Gfx.CreateEntity(HealthbarData);
-        ASSERT(idShipHealthbar);
-    }
-
-
-    RenderEntity PlayerShipData;
-
+    RenderEntity PlayerShipData = {};
     if (bUseShipMesh)
     {
         constexpr size_t NumVerts = 15;
@@ -128,12 +145,13 @@ void PlayerShip::Init(UBGameImpl* Game)
         ImageT PlayerShipTextureImage = {};
         LoadBMPFile("Assets/player_ship.bmp", PlayerShipTextureImage);
         ASSERT(PlayerShipTextureImage.PxBuffer);
-        PlayerShipData = RenderEntity::Default(m4f::Identity(), DrawType::Texture, Game->Gfx.idQuadTexture);
         idShipTexture = Game->Gfx.CreateTexture(&PlayerShipTextureImage);
         ASSERT(idShipTexture);
+        delete[] PlayerShipTextureImage.PxBuffer;
+
+        PlayerShipData = RenderEntity::Default(m4f::Identity(), DrawType::Texture, Game->Gfx.idQuadTexture);
         PlayerShipData.TextureState.idTexture = idShipTexture;
         PlayerShipData.TextureState.idSampler = Game->Gfx.idDefaultSampler;
-        delete[] PlayerShipTextureImage.PxBuffer;
     }
     idShip = Game->Gfx.CreateEntity(PlayerShipData);
     ASSERT(idShip);
@@ -150,8 +168,7 @@ void PlayerShip::Term(UBGameImpl* Game)
         Game->Gfx.DestroyTexture(idShipTexture);
     }
     Game->Gfx.DestroyEntity(idShip);
-    Game->Gfx.DestroyEntity(idShipHealthbar);
-    Game->Gfx.DestroyEntity(idShipHealthbarBG);
+    Healthbar.Term(Game);
 }
 
 void PlayerShip::Update(UBGameImpl* Game)
@@ -220,20 +237,6 @@ void PlayerShip::Update(UBGameImpl* Game)
     ASSERT(pRent);
     pRent->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::RotZ(Angle) * m4f::Trans(Pos.X, Pos.Y, 0.0f);
 
-    // Health bar:
-    {
-        v2f HealthbarPos = { 256.0f, 256.0f };
-        v2f HealthbarSize = { 100.0f, 30.0f };
-
-        RenderEntity* pREHealthbarBG = Game->Gfx.GetEntity(idShipHealthbarBG);
-        ASSERT(pREHealthbarBG);
-        pREHealthbarBG->World = m4f::Scale(HealthbarSize.X, HealthbarSize.Y, 1.0f) * m4f::Trans(HealthbarPos.X, HealthbarPos.Y, 0.0f);
-
-        RenderEntity* pREHealthbar = Game->Gfx.GetEntity(idShipHealthbar);
-        ASSERT(pREHealthbar);
-        pREHealthbar->World = m4f::Scale(HealthbarSize.X*Health/100.0f*0.90f, HealthbarSize.Y*0.90f, 1.0f) * m4f::Trans(HealthbarPos.X, HealthbarPos.Y, -0.1f);
-    }
-
     static f32 LastBulletSpawn = 0.0f;
     static constexpr f32 SecondsPerBullet = 0.25f;
     static constexpr f32 Speed = 100.0f;
@@ -257,6 +260,10 @@ void BossShip::Hit(UBGameImpl* Game)
         Term(Game);
         Init(Game);
     }
+    else
+    {
+        Healthbar.Update(Game, Health / MaxHealth);
+    }
 }
 
 void BossShip::Init(UBGameImpl* Game)
@@ -270,7 +277,13 @@ void BossShip::Init(UBGameImpl* Game)
 
     BoundingBox = { {}, {} };
     Scale = 10.0f;
-    Health = 100.0f;
+    Health = MaxHealth;
+    constexpr v4f HealthbarColor{ 1.0f, 0.0f, 0.0f, 1.0f };
+    constexpr v2f HealthbarSize{ 100.0f, 25.0f };
+    constexpr v2f HealthbarTopRightOffset{ HealthbarSize.X * -1.125f, HealthbarSize.Y * -1.5f };
+    v2f HealthbarPos = Add({ (f32)GlobalEngine->Width * +0.5f, (f32)GlobalEngine->Height * +0.5f }, HealthbarTopRightOffset);
+    Healthbar.Init(Game, Health / MaxHealth, HealthbarColor, HealthbarPos, HealthbarSize);
+
     // Boss mesh:
     {
         VxMin BossVerts[BossNumVerts] = { { 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -353,6 +366,10 @@ void BossShip::Init(UBGameImpl* Game)
         idBoundingBox = Game->Gfx.CreateEntity(BoundingBoxRenderData);
     }
 
+    BoundingBox.Min.X *= Scale;
+    BoundingBox.Min.Y *= Scale;
+    BoundingBox.Max.X *= Scale;
+    BoundingBox.Max.Y *= Scale;
     RenderEntity BossShipData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0), DrawType::Unicolor, idShipMesh);
     BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
     idShip = Game->Gfx.CreateEntity(BossShipData);
