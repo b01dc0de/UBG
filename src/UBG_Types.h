@@ -16,6 +16,13 @@ using f32 = float;
 using f64 = double;
 
 // Vector / matrix types:
+struct v2i
+{
+    s32 X;
+    s32 Y;
+};
+// TODO: v3i, v4i(?)
+
 struct v2f
 {
     f32 X;
