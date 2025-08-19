@@ -67,7 +67,7 @@ void PlayerShip::Hit(UBGameImpl* Game)
 void PlayerShip::Init(UBGameImpl* Game)
 {
     Pos = { (float)GlobalEngine->Width * -0.25f, (float)GlobalEngine->Height * +0.25f };
-    Momentum = 0.0f;
+    Vel = { 0.0f, 0.0f };
     Scale = 25.0f;
     Angle = 0.0f;
     Health = MaxHealth;
@@ -173,41 +173,39 @@ void PlayerShip::Term(UBGameImpl* Game)
 
 void PlayerShip::Update(UBGameImpl* Game)
 {
-    bool bKeyW = GlobalEngine->Input->Keyboard.GetKey('W');
-    bool bKeyA = GlobalEngine->Input->Keyboard.GetKey('A');
-    bool bKeyS = GlobalEngine->Input->Keyboard.GetKey('S');
-    bool bKeyD = GlobalEngine->Input->Keyboard.GetKey('D');
     f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
-    bool bMoving = false;
-    v2f Vel = { 0.0f, 0.0f };
-    if (bKeyW != bKeyS && bKeyA != bKeyD)
+
+    bool bKeyUp = GlobalEngine->Input->Keyboard.GetKey('W');
+    bool bKeyLeft = GlobalEngine->Input->Keyboard.GetKey('A');
+    bool bKeyDown = GlobalEngine->Input->Keyboard.GetKey('S');
+    bool bKeyRight = GlobalEngine->Input->Keyboard.GetKey('D');
+    // Handle movement input
     {
-        bMoving = true;
-        f32 AdjMom = Momentum / sqrtf(2.0f);
-        Vel.Y = (bKeyS ? -AdjMom: +AdjMom) * fMaxSpeed;
-        Vel.X = (bKeyA ? -AdjMom: +AdjMom) * fMaxSpeed;
-    }
-    else if (bKeyW != bKeyS)
-    {
-        bMoving = true;
-        Vel.Y = (bKeyS ? -Momentum : +Momentum) * fMaxSpeed;
-    }
-    else if (bKeyA != bKeyD)
-    {
-        bMoving = true;
-        Vel.X = (bKeyA ? -Momentum : +Momentum) * fMaxSpeed;
+        static constexpr f32 fAcclFactor = 2.0f;
+        v2f Acceleration = { };
+
+        if (bKeyLeft) { Acceleration.X -= fAcclFactor; }
+        if (bKeyRight) { Acceleration.X += fAcclFactor; }
+
+        if (bKeyUp) { Acceleration.Y += fAcclFactor; }
+        if (bKeyDown) { Acceleration.Y -= fAcclFactor; }
+
+        // Keep diagonal movement the same
+        if ((bKeyLeft || bKeyRight) && (bKeyUp || bKeyDown))
+        {
+            Acceleration *= fInvSqrt2;
+        }
+
+        static constexpr f32 fVelFactor = 250.0f;
+        static constexpr f32 fFrictionFactor = 0.95f;
+        Acceleration *= fVelFactor;
+        Acceleration += Vel * -fFrictionFactor;
+
+        // f(t) = (1/2)at^2 + vt + p;
+        Pos = Acceleration * 0.5f * Square(DeltaTime) + Vel * DeltaTime + Pos;
+        Vel += Acceleration * DeltaTime;
     }
 
-    if (bMoving)
-    {
-        Momentum = Clamp(0.0f, 1.0f, Momentum + DeltaTime * 2.0f);
-    }
-    else
-    {
-        Momentum = Clamp(0.0f, 1.0f, Momentum - DeltaTime * 0.1f);
-    }
-    Pos.X += Vel.X * DeltaTime;
-    Pos.Y += Vel.Y * DeltaTime;
     float HalfScale = Scale * 0.5f;
     float HalfWidth = GlobalEngine->Width * 0.5f;
     float HalfHeight = GlobalEngine->Height * 0.5f;

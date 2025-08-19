@@ -29,7 +29,7 @@ struct PlayerShip
     RenderEntityID idShip;
     VisualProgressBar Healthbar;
     v2f Pos;
-    f32 Momentum;
+    v2f Vel;
     f32 Scale;
     f32 Angle;
     f32 Health;
