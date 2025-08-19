@@ -3,12 +3,21 @@
 
 static constexpr f32 fPI = 3.14159265359f;
 static constexpr f32 fTAU = fPI * 2.0f;
+static constexpr f32 fSqrt2 = 1.414213562373095f;
+static constexpr f32 fInvSqrt2 = 1.0f / fSqrt2;
 
 bool fIsZero(f32 A);
+
+f32 Square(f32 A);
 
 f32 Min(f32 A, f32 B);
 f32 Max(f32 A, f32 B);
 f32 Clamp(f32 Min, f32 Max, f32 C);
+
+v2f Negate(v2f A);
+v3f Negate(v3f A);
+v2f operator-(v2f A);
+v3f operator-(v3f A);
 
 v2f Add(v2f A, v2f B);
 v3f Add(v3f A, v3f B);

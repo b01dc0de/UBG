@@ -127,6 +127,11 @@ bool fIsZero(f32 A)
     return fabsf(A) < fEpsilon;
 }
 
+f32 Square(f32 A)
+{
+    return A * A;
+}
+
 f32 Min(f32 A, f32 B)
 {
     if (B < A) { return B; }
@@ -144,6 +149,28 @@ f32 Clamp(f32 Min, f32 Max, f32 C)
     if (C < Min) { return Min; }
     if (C > Max) { return Max; }
     return C;
+}
+
+v2f Negate(v2f A)
+{
+    v2f Result = { -A.X, -A.Y };
+    return Result;
+}
+
+v3f Negate(v3f A)
+{
+    v3f Result = { -A.X, -A.Y, -A.Z };
+    return Result;
+}
+
+v2f operator-(v2f A)
+{
+    return Negate(A);
+}
+
+v3f operator-(v3f A)
+{
+    return Negate(A);
 }
 
 v2f Add(v2f A, v2f B)
