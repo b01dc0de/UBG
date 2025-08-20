@@ -212,13 +212,19 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
     float HalfScale = Scale * 0.5f;
     float HalfWidth = GlobalEngine->Width * 0.5f;
     float HalfHeight = GlobalEngine->Height * 0.5f;
-    Pos.X = Clamp(0.0f + HalfScale - HalfWidth, GlobalEngine->Width - HalfScale - HalfWidth, Pos.X);
-    Pos.Y = Clamp(0.0f + HalfScale - HalfHeight, GlobalEngine->Height - HalfScale - HalfHeight, Pos.Y);
+    float MinX = HalfScale - HalfWidth;
+    float MinY = HalfScale - HalfHeight;
+    float MaxX = GlobalEngine->Width - HalfScale - HalfWidth;
+    float MaxY = GlobalEngine->Height - HalfScale - HalfHeight;
+    bool bShouldClamp = (Pos.X < MinX || MaxX < Pos.X) || (Pos.Y < MinY || MaxY < Pos.Y);
+    Pos.X = Clamp(MinX, MaxX, Pos.X);
+    Pos.Y = Clamp(MinY, MaxY, Pos.Y);
     BoundingBox =
     {
         { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
         { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
     };
+    if (bShouldClamp) { Vel = { 0.0f, 0.0f }; }
 
     // Update ship angle
     switch (AimBehavior)

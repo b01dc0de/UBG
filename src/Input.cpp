@@ -29,7 +29,7 @@ void KeyboardState::SetKeyDown(UBGKeyCode Key)
     bool bFound = false;
     for (int KeyIdx = 0; KeyIdx < MaxNumKeys; KeyIdx++)
     {
-        if (KeysPressed[KeyIdx] == 0&& FirstZeroIdx == -1)
+        if (KeysPressed[KeyIdx] == 0 && FirstZeroIdx == -1)
         {
             FirstZeroIdx = KeyIdx;
         }

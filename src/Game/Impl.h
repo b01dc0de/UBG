@@ -20,15 +20,10 @@ struct VisualProgressBar
 
 struct PlayerShip
 {
-    enum struct AimControls
-    {
-        Mouse,
-        Keys,
-        Auto
-    };
     static constexpr bool bUseShipMesh = false;
     static constexpr f32 fMaxSpeed = 750.0f;
     static constexpr f32 MaxHealth = 100.0f;
+    enum struct AimControls { Mouse, Keys, Auto };
     static constexpr AimControls AimBehavior = AimControls::Auto;
 
     TextureStateID idShipTexture;
