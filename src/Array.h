@@ -125,6 +125,12 @@ struct DArray
         Resize((size_t)(Capacity * DefaultGrowthFactor));
     }
 
+    // Quick and dirty 'empty', just zeros out Num
+    void Clear()
+    {
+        Num = 0;
+    }
+
     void Add(const T& Item)
     {
         if (Num >= Capacity)

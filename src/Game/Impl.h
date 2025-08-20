@@ -3,6 +3,8 @@
 
 struct UBGameImpl;
 
+// TODO: Implement a 'DefaultSpriteWorld'
+
 struct VisualProgressBar
 {
     static constexpr f32 fPadding = 2.0f;
@@ -72,9 +74,14 @@ enum struct BulletType
     Count
 };
 
+#define BULLETMGR_USE_INSTDRAW() (1)
+
 struct PerBulletData
 {
+#if BULLETMGR_USE_INSTDRAW()
+#else
     RenderEntityID ID;
+#endif // BULLETMGR_USE_INSTDRAW()
     BulletType Type;
     v2f Pos;
     v2f Vel;
@@ -85,16 +92,21 @@ struct BulletManager
     static constexpr bool bDebugPrint = false;
     static constexpr int MaxBulletsPlayer = 256;
     static constexpr int MaxBulletsBoss = 256;
-    static constexpr v4f PlayerBulletColor = { 0.0f, 1.0f, 0.0f, 1.0f };
-    static constexpr v4f BossBulletColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+    static constexpr v4f PlayerBulletColor = { 0.8f, 0.8f, 0.8f, 0.8f };
+    static constexpr v4f BossBulletColor = { 0.9f, 0.1f, 0.1f, 1.0f };
     static constexpr f32 PlayerBulletSize = 5.0f;
     static constexpr f32 BossBulletSize = 10.0f;
 
+#if BULLETMGR_USE_INSTDRAW()
+    RenderInstEntityID idInstBullets;
+    DArray<InstRectColorData> BulletInstDrawData;
+#else
     MeshStateID idBulletMesh;
+    DArray<RenderEntityID> InactiveBullets;
+#endif // BULLETMGR_USE_INSTDRAW()
     int NumBulletsPlayer;
     int NumBulletsBoss;
     DArray<PerBulletData> ActiveBullets;
-    DArray<RenderEntityID> InactiveBullets;
 
     static bool DoesCollide(PerBulletData& Bullet, AABB* BoundingBox);
     static bool IsOffscreen(PerBulletData& Bullet);

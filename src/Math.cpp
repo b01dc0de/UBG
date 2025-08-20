@@ -132,6 +132,7 @@ f32 Square(f32 A)
     return A * A;
 }
 
+/*
 f32 Min(f32 A, f32 B)
 {
     if (B < A) { return B; }
@@ -150,6 +151,7 @@ f32 Clamp(f32 Min, f32 Max, f32 C)
     if (C > Max) { return Max; }
     return C;
 }
+*/
 
 bool Equals(v2i A, v2i B)
 {

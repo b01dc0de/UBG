@@ -77,6 +77,12 @@ struct m4f
     static m4f Trans(f32 X, f32 Y, f32 Z);
 };
 
+struct RectF
+{
+    v2f Pos = {};
+    v2f Size = {};
+};
+
 struct RGBA32
 {
     u8 R;

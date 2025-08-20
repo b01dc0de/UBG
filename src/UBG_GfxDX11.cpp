@@ -92,6 +92,50 @@ void MeshStateT::SafeRelease()
     ::SafeRelease(IxBuffer);
 }
 
+void MeshInstStateT::Bind(UBG_GfxContextT* Context)
+{
+    ID3D11Buffer* VxInstBuffers[] = { VxBuffer, InstBuffer };
+    u32 VxInstStrides[] = { (u32)VertexSize, (u32)PerInstSize };
+    u32 VxInstOffsets[] = { 0, 0 };
+    Context->IASetVertexBuffers(0, ARRAY_SIZE(VxInstBuffers), VxInstBuffers, VxInstStrides, VxInstOffsets);
+    Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
+    Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void MeshInstStateT::Draw(UBG_GfxContextT* Context, size_t NumInst, void* pInstData)
+{
+    ASSERT(NumInst && pInstData);
+
+    u32 NumInstPerCall = (u32)MaxInstCount;
+    u8* InstReadPtr = (u8*)pInstData;
+    u32 NumRemainingInst = (u32)NumInst;
+    while (NumRemainingInst > 0)
+    {
+        u32 CurrDrawNumInst = Min(NumRemainingInst, NumInstPerCall);
+        // Map instance data
+        {
+            D3D11_MAPPED_SUBRESOURCE InstDataMapWrite = {};
+            ASSERT(!FAILED(Context->Map(InstBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &InstDataMapWrite)));
+            memcpy(InstDataMapWrite.pData, InstReadPtr, CurrDrawNumInst * PerInstSize);
+            Context->Unmap(InstBuffer, 0);
+        }
+
+        // Draw instances
+        if (IxBuffer) { Context->DrawIndexedInstanced((u32)NumInds, (u32)CurrDrawNumInst, 0, 0, 0); }
+        else { Context->DrawInstanced((u32)NumVerts, (u32)CurrDrawNumInst, 0, 0); }
+
+        InstReadPtr += CurrDrawNumInst * PerInstSize;
+        NumRemainingInst -= CurrDrawNumInst;
+    }
+}
+
+void MeshInstStateT::SafeRelease()
+{
+    ::SafeRelease(VxBuffer);
+    ::SafeRelease(InstBuffer);
+    ::SafeRelease(IxBuffer);
+}
+
 int CompileShaderHLSL
 (
     FileContentsT* FileHLSL,
@@ -122,6 +166,17 @@ MeshStateT CreateMeshState
     size_t NumIndices,
     unsigned int* IndexData
 );
+MeshInstStateT CreateMeshInstState
+(
+    ID3D11Device* InDevice,
+    size_t VertexSize,
+    size_t PerInstSize,
+    size_t MaxInstCount,
+    size_t NumVertices,
+    void* VertexData,
+    size_t NumIndices,
+    u32* IndexData
+);
 
 RenderEntity RenderEntity::Default(m4f World, DrawType Type, MeshStateID idMesh)
 {
@@ -144,11 +199,14 @@ void RenderEntitySystem::Init()
 {
     Entities = {};
     Entities.Init();
+    EntitiesInst = {};
+    EntitiesInst.Init();
 }
 
 void RenderEntitySystem::Term()
 {
     Entities.Term();
+    EntitiesInst.Term();
 }
 
 RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
@@ -156,9 +214,19 @@ RenderEntity* RenderEntitySystem::Get(RenderEntityID ID)
     return Entities.Get(ID);
 }
 
+RenderInstEntity* RenderEntitySystem::GetInst(RenderInstEntityID ID)
+{
+    return EntitiesInst.Get(ID);
+}
+
 RenderEntityID RenderEntitySystem::Create()
 {
     return Entities.Create({});
+}
+
+RenderInstEntityID RenderEntitySystem::CreateInst()
+{
+    return EntitiesInst.Create({});
 }
 
 RenderEntityID RenderEntitySystem::Create(RenderEntity InitData)
@@ -166,9 +234,19 @@ RenderEntityID RenderEntitySystem::Create(RenderEntity InitData)
     return Entities.Create(InitData);
 }
 
+RenderInstEntityID RenderEntitySystem::CreateInst(RenderInstEntity InitData)
+{
+    return EntitiesInst.Create(InitData);
+}
+
 void RenderEntitySystem::Destroy(RenderEntityID ID)
 {
     Entities.Destroy(ID);
+}
+
+void RenderEntitySystem::DestroyInst(RenderInstEntityID ID)
+{
+    EntitiesInst.Destroy(ID);
 }
 
 void RenderEntitySystem::DrawAll(GfxSystem* System)
@@ -185,6 +263,14 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
         if (Entities.ActiveList[Idx].bVisible)
         {
             Entities.ActiveList[Idx].Draw(System);
+        }
+    }
+
+    for (size_t Idx = 0; Idx < EntitiesInst.NumActive; Idx++)
+    {
+        if (EntitiesInst.ActiveList[Idx].bVisible)
+        {
+            EntitiesInst.ActiveList[Idx].Draw(System);
         }
     }
 }
@@ -247,6 +333,54 @@ void RenderEntity::Draw(GfxSystem* System)
             ASSERT(false);
         } break;
     }
+}
+
+void RenderInstEntity::UpdateWorld(GfxSystem* System)
+{
+    ASSERT(System && System->Backend && System->Backend->Context);
+    UBG_GfxContextT* Context = System->Backend->Context;
+    ShaderBufferT* pWorldBuffer = System->ShaderBuffers.Get(System->idWorldBuffer);
+    ASSERT(pWorldBuffer);
+    Context->UpdateSubresource(*pWorldBuffer, 0, nullptr, &World, (u32)sizeof(m4f), 0);
+}
+
+void RenderInstEntity::Draw(GfxSystem* System)
+{
+    ASSERT(bVisible);
+    ASSERT(System && System->Backend && System->Backend->Context);
+
+    // Early return if nothing to draw
+    if (!NumInst || !pInstData) { return; }
+    ASSERT(NumInst);
+    ASSERT(pInstData);
+
+    UBG_GfxContextT* Context = System->Backend->Context;
+    MeshInstStateT* pMesh = System->MeshesInst.Get(idMesh);
+    ASSERT(pMesh);
+
+    switch (Type)
+    {
+        case DrawInstType::Color:
+        {
+            UpdateWorld(System);
+            pMesh->Bind(Context);
+            DrawStateT* pDrawInstColor = System->DrawInstStates.Get(System->idsDrawInstState[(size_t)DrawInstType::Color]);
+            ASSERT(pDrawInstColor);
+            pDrawInstColor->Bind(System);
+            pMesh->Draw(Context, NumInst, pInstData);
+
+        } break;
+
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
+
+    // NOTE: For safety reasons, we clear out the NumInst and pInstData after drawing
+    //      This requires the owner of this RenderInstEntity to explicitly set both each frame
+    NumInst = 0;
+    pInstData = nullptr;
 }
 
 void UBG_Gfx_DX11::DrawBegin()
@@ -602,6 +736,46 @@ MeshStateT CreateMeshState
     return Result;
 }
 
+MeshInstStateT CreateMeshInstState
+(
+    ID3D11Device* InDevice,
+    size_t VertexSize,
+    size_t PerInstSize,
+    size_t MaxInstCount,
+    size_t NumVertices,
+    void* VertexData,
+    size_t NumIndices,
+    u32* IndexData
+)
+{
+    MeshInstStateT Result;
+
+    Result.VertexSize = VertexSize;
+    Result.NumVerts = NumVertices;
+    Result.NumInds = NumIndices;
+    Result.PerInstSize = PerInstSize;
+    Result.MaxInstCount = MaxInstCount;
+    Result.InstBufferSize = PerInstSize * MaxInstCount;
+
+    size_t VxDataSize = VertexSize * NumVertices;
+    D3D11_BUFFER_DESC VertexBufferDesc = { (u32)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
+    D3D11_SUBRESOURCE_DATA VertexBufferInitData = { VertexData, 0, 0 };
+    InDevice->CreateBuffer(&VertexBufferDesc, &VertexBufferInitData, &Result.VxBuffer);
+
+    D3D11_BUFFER_DESC InstBufferDesc = { (u32)Result.InstBufferSize, D3D11_USAGE_DYNAMIC, D3D11_BIND_VERTEX_BUFFER, D3D11_CPU_ACCESS_WRITE, 0 };
+    InDevice->CreateBuffer(&InstBufferDesc, nullptr, &Result.InstBuffer);
+
+    if (IndexData)
+    {
+        size_t IxDataSize = NumIndices * sizeof(u32);
+        D3D11_BUFFER_DESC IndexBufferDesc = { (u32)IxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_INDEX_BUFFER, 0, 0 };
+        D3D11_SUBRESOURCE_DATA IndexBufferInitData = { IndexData, 0, 0 };
+        InDevice->CreateBuffer(&IndexBufferDesc, &IndexBufferInitData, &Result.IxBuffer);
+    }
+
+    return Result;
+}
+
 bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 {
     ASSERT(_GfxBackend);
@@ -612,6 +786,9 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
     DrawStates = {};
     DrawStates.Init();
+
+    DrawInstStates = {};
+    DrawInstStates.Init();
 
     ShaderBuffers = {};
     ShaderBuffers.Init();
@@ -624,6 +801,11 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
     Meshes = {};
     Meshes.Init();
+
+    MeshesInst = {};
+    MeshesInst.Init();
+    // TODO: The above sucks! having to do all of these calls sucks
+    //      We should at least remove the = {} by having inline default values in each struct definition
 
     // Default texture / sampler:
     {
@@ -746,6 +928,28 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         ASSERT(idsDrawState[(size_t)DrawType::Unicolor]);
     }
 
+    // Inst shader color:
+    {
+        D3D11_INPUT_ELEMENT_DESC InputElements[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "RECT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+        };
+        DrawStateT DrawInstColor = CreateDrawState
+        (
+            Backend->Device,
+            "src/hlsl/BaseInstShader.hlsl",
+            DefaultDefines,
+            InputElements,
+            ARRAY_SIZE(InputElements),
+            ARRAY_SIZE(idsWVPBuffers), idsWVPBuffers,
+            0, 0
+        );
+        idsDrawInstState[(size_t)DrawInstType::Color] = DrawInstStates.Create(DrawInstColor);
+        ASSERT(idsDrawInstState[(size_t)DrawInstType::Color]);
+    }
+
     // Platonic quad:
     {
         VxTex QuadVertsTexture[] = {
@@ -755,7 +959,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
         };
 
-        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+        u32 QuadInds[] = { 0, 1, 2,    1, 3, 2 };
 
         idQuadTexture = CreateMesh(
             sizeof(VxTex),
@@ -794,6 +998,16 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             ARRAY_SIZE(QuadInds), QuadInds
         );
         ASSERT(idQuadUnicolor);
+
+        idInstRectColor = CreateMeshInst(
+            sizeof(VxMin),
+            sizeof(InstRectColorData),
+            1024,
+            ARRAY_SIZE(QuadVertsUnicolor),
+            QuadVertsUnicolor,
+            ARRAY_SIZE(QuadInds),
+            QuadInds
+        );
     }
 
     // TODO: Why is Depth passed as -2?
@@ -841,9 +1055,19 @@ RenderEntity* GfxSystem::GetEntity(RenderEntityID ID)
     return Entities.Get(ID);
 }
 
+RenderInstEntity* GfxSystem::GetEntityInst(RenderInstEntityID ID)
+{
+    return Entities.GetInst(ID);
+}
+
 RenderEntityID GfxSystem::CreateEntity(RenderEntity EntityState)
 {
     return Entities.Create(EntityState);
+}
+
+RenderInstEntityID GfxSystem::CreateEntityInst(RenderInstEntity EntityState)
+{
+    return Entities.CreateInst(EntityState);
 }
 
 void GfxSystem::DestroyEntity(RenderEntityID ID)
@@ -851,9 +1075,19 @@ void GfxSystem::DestroyEntity(RenderEntityID ID)
     Entities.Destroy(ID);
 }
 
+void GfxSystem::DestroyEntityInst(RenderInstEntityID ID)
+{
+    Entities.DestroyInst(ID);
+}
+
 MeshStateT* GfxSystem::GetMesh(MeshStateID ID)
 {
     return Meshes.Get(ID);
+}
+
+MeshInstStateT* GfxSystem::GetMeshInst(MeshInstStateID ID)
+{
+    return MeshesInst.Get(ID);
 }
 
 MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
@@ -870,9 +1104,30 @@ MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* V
     return Meshes.Create(NewMesh);
 }
 
+MeshInstStateID GfxSystem::CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
+{
+    MeshInstStateT NewMesh = CreateMeshInstState
+    (
+        Backend->Device,
+        VertexSize,
+        PerInstSize,
+        MaxInstCount,
+        NumVertices,
+        VertexData,
+        NumIndices,
+        IndexData
+    );
+    return MeshesInst.Create(NewMesh);
+}
+
 void GfxSystem::DestroyMesh(MeshStateID ID)
 {
     Meshes.Destroy(ID);
+}
+
+void GfxSystem::DestroyMeshInst(MeshInstStateID ID)
+{
+    MeshesInst.Destroy(ID);
 }
 
 TextureStateT* GfxSystem::GetTexture(TextureStateID ID)

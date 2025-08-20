@@ -118,5 +118,8 @@
     <FxCompile Include="src\hlsl\BaseShaderUnicolor.hlsl">
       <Filter>src\hlsl</Filter>
     </FxCompile>
+    <FxCompile Include="src\hlsl\BaseInstShader.hlsl">
+      <Filter>src\hlsl</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

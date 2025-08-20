@@ -32,9 +32,12 @@ struct UBG_Gfx_DX11
 using UBG_GfxT = UBG_Gfx_DX11;
 using UBG_GfxContextT = ID3D11DeviceContext;
 
-// Aliases for TypeID, TODO: In the future we problably want to distinguish these
+// Aliases for TypeID
+// TODO: In the future we problably want to distinguish these
 using MeshStateID = TypeID;
+using MeshInstStateID = TypeID;
 using RenderEntityID = TypeID;
+using RenderInstEntityID = TypeID;
 using ShaderBufferID = TypeID;
 using TextureStateID = TypeID;
 using SamplerStateID = TypeID;
@@ -75,6 +78,23 @@ struct MeshStateT
     void SafeRelease();
 };
 
+struct MeshInstStateT
+{
+    size_t VertexSize = 0;
+    size_t NumVerts = 0;
+    size_t NumInds = 0;
+    size_t PerInstSize = 0;
+    size_t MaxInstCount = 0;
+    size_t InstBufferSize = 0;
+    ID3D11Buffer* VxBuffer = nullptr;
+    ID3D11Buffer* InstBuffer = nullptr;
+    ID3D11Buffer* IxBuffer = nullptr;
+
+    void Bind(UBG_GfxContextT* Context);
+    void Draw(UBG_GfxContextT* Context, size_t NumInst, void* pInstData);
+    void SafeRelease();
+};
+
 struct TextureStateT
 {
     ID3D11Texture2D* Texture;
@@ -94,6 +114,12 @@ enum struct DrawType
     Count
 };
 
+enum struct DrawInstType
+{
+    Color,
+    Count
+};
+
 struct DrawColorState { }; // Nothing needed for now
 
 struct DrawTextureState
@@ -109,10 +135,10 @@ struct DrawUnicolorState
 
 struct RenderEntity
 {
-    bool bVisible;
-    m4f World;
-    DrawType Type;
-    MeshStateID idMesh;
+    bool bVisible = true;
+    m4f World = m4f::Identity();
+    DrawType Type = DrawType::Count;
+    MeshStateID idMesh = 0;
     union
     {
         DrawColorState ColorState;
@@ -126,16 +152,41 @@ struct RenderEntity
     void Draw(GfxSystem* System);
 };
 
+struct InstRectColorData
+{
+    RectF Rect;
+    v4f Color;
+};
+
+struct RenderInstEntity
+{
+    bool bVisible = true;
+    m4f World = m4f::Identity();
+    DrawInstType Type = DrawInstType::Count;
+    MeshInstStateID idMesh = 0;
+    size_t NumInst = 0;
+    void* pInstData = nullptr;
+
+    void UpdateWorld(GfxSystem* System);
+    void Draw(GfxSystem* System);
+};
+
+// TODO: Implement _some_ way of enforcing a draw order
 struct RenderEntitySystem
 {
     ListID<RenderEntity> Entities;
+    ListID<RenderInstEntity> EntitiesInst;
 
     void Init();
     void Term();
     RenderEntity* Get(RenderEntityID ID);
+    RenderInstEntity* GetInst(RenderInstEntityID ID);
     RenderEntityID Create();
     RenderEntityID Create(RenderEntity InitData);
+    RenderInstEntityID CreateInst();
+    RenderInstEntityID CreateInst(RenderInstEntity InitData);
     void Destroy(RenderEntityID ID);
+    void DestroyInst(RenderInstEntityID ID);
     void DrawAll(GfxSystem* System);
 };
 
@@ -147,6 +198,8 @@ struct GfxSystem
 
     DrawStateID idsDrawState[(size_t)DrawType::Count];
     ListID<DrawStateT> DrawStates;
+    DrawStateID idsDrawInstState[(size_t)DrawInstType::Count];
+    ListID<DrawStateT> DrawInstStates;
 
     ShaderBufferID idWorldBuffer;
     ShaderBufferID idViewProjBuffer;
@@ -161,6 +214,8 @@ struct GfxSystem
     MeshStateID idQuadTexture;
     MeshStateID idQuadUnicolor;
     ListID<MeshStateT> Meshes;
+    MeshInstStateID idInstRectColor;
+    ListID<MeshInstStateT> MeshesInst;
 
     Camera MainCameraO;
 
@@ -169,10 +224,16 @@ struct GfxSystem
 
     RenderEntity* GetEntity(RenderEntityID ID);
     RenderEntityID CreateEntity(RenderEntity EntityState);
+    RenderInstEntity* GetEntityInst(RenderInstEntityID ID);
+    RenderInstEntityID CreateEntityInst(RenderInstEntity EntityState);
     void DestroyEntity(RenderEntityID ID);
+    void DestroyEntityInst(RenderInstEntityID ID);
     MeshStateT* GetMesh(MeshStateID ID);
+    MeshInstStateT* GetMeshInst(MeshInstStateID ID);
     MeshStateID CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
+    MeshInstStateID CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
     void DestroyMesh(MeshStateID ID);
+    void DestroyMeshInst(MeshInstStateID ID);
     TextureStateT* GetTexture(TextureStateID ID);
     TextureStateID CreateTexture(ImageT* Image);
     void DestroyTexture(TextureStateID ID);

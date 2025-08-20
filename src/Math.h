@@ -10,9 +10,33 @@ bool fIsZero(f32 A);
 
 f32 Square(f32 A);
 
+template <typename T>
+T Min(T A, T B)
+{
+    if (B < A) { return B; }
+    return A;
+}
+
+template <typename T>
+T Max(T A, T B)
+{
+    if (B > A) { return B; }
+    return A;
+}
+
+template <typename T>
+T Clamp(T Min, T Max, T C)
+{
+    if (C < Min) { return Min; }
+    if (C > Max) { return Max; }
+    return C;
+}
+
+/*
 f32 Min(f32 A, f32 B);
 f32 Max(f32 A, f32 B);
 f32 Clamp(f32 Min, f32 Max, f32 C);
+*/
 
 bool Equals(v2i A, v2i B);
 bool NotEquals(v2i A, v2i B);
