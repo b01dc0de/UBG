@@ -1002,7 +1002,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
         idInstRectColor = CreateMeshInst(
             sizeof(VxMin),
             sizeof(InstRectColorData),
-            1024,
+            MeshInstStateT::DefaultMaxInstCount,
             ARRAY_SIZE(QuadVertsUnicolor),
             QuadVertsUnicolor,
             ARRAY_SIZE(QuadInds),

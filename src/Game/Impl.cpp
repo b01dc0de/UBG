@@ -501,9 +501,9 @@ bool BulletManager::IsOffscreen(PerBulletData& Bullet)
 
 void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel)
 {
-    (void)Game;
+    UNUSED_VAR(Game);
+
     // TODO: Do we care about enforcing a strict limit on NumBullets?
-#if BULLETMGR_USE_INSTDRAW()
     if ((Type == BulletType::Player && NumBulletsPlayer < MaxBulletsPlayer) ||
         (Type == BulletType::Boss && NumBulletsBoss < MaxBulletsBoss))
     {
@@ -513,99 +513,14 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
         if (Type == BulletType::Player) { NumBulletsPlayer++; }
         else { NumBulletsBoss++; }
     }
-#else
-    if ((Type == BulletType::Player && NumBulletsPlayer < MaxBulletsPlayer) ||
-        (Type == BulletType::Boss && NumBulletsBoss < MaxBulletsBoss))
-    {
-        if (InactiveBullets.Num)
-        {
-            RenderEntityID NewID = InactiveBullets[0];
-            if (NewID == 0)
-            {
-                DebugBreak();
-            }
-            InactiveBullets.Remove(0);
-            PerBulletData NewBullet =
-            {
-                NewID,
-                Type,
-                Pos,
-                Vel
-            };
-            ActiveBullets.Add(NewBullet);
-            RenderEntity* BulletRE = Game->Gfx.GetEntity(NewID);
-            ASSERT(BulletRE);
-            BulletRE->bVisible = true;
-            BulletRE->World = m4f::Identity();
-            BulletRE->Type = DrawType::Unicolor;
-            BulletRE->idMesh = idBulletMesh;
-            BulletRE->UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
-
-            if (bDebugPrint)
-            {
-                Outf("[debug][BulletManager]: Recycled NewBullet\n");
-                Outf("\tRenderEntityID: %d\n", NewID);
-                Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
-                Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
-                Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
-            }
-        }
-        else
-        {
-            RenderEntity REBulletData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBulletMesh);
-            REBulletData.UnicolorState = { Type == BulletType::Player ? PlayerBulletColor : BossBulletColor };
-            RenderEntityID NewID = Game->Gfx.CreateEntity(REBulletData);
-            if (NewID == 0)
-            {
-                DebugBreak();
-            }
-            PerBulletData NewBullet = { NewID, Type, Pos, Vel };
-            ActiveBullets.Add(NewBullet);
-            if (bDebugPrint)
-            {
-                Outf("[debug][BulletManager]: Created NewBullet\n");
-                Outf("\tRenderEntityID: %d\n", NewID);
-                Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
-                Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
-                Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
-            }
-        }
-
-        if (Type == BulletType::Player)
-        {
-            NumBulletsPlayer++;
-        }
-        else
-        {
-            NumBulletsBoss++;
-        }
-    }
-    else
-    {
-        if (bDebugPrint)
-        {
-            Outf("[debug][BulletManager]: DIDN'T create NewBullet: MaxBullets reached\n");
-            Outf("\tWould be stats:\n");
-            Outf("\tType: %s\n", Type == BulletType::Player ? "Player" : "Boss");
-            Outf("\tPos: <%0.2f, %0.2f>\n", Pos.X, Pos.Y);
-            Outf("\tDir: <%0.2f, %0.2f>\n", Vel.X, Vel.Y);
-        }
-    }
-#endif // BULLETMGR_USE_INSTDRAW()
 }
 
 void BulletManager::Init(UBGameImpl* Game)
 {
-    NumBulletsPlayer = 0;
-    NumBulletsBoss = 0;
+    BulletInstDrawData.Reserve(MeshInstStateT::DefaultMaxInstCount);
 
-#if BULLETMGR_USE_INSTDRAW()
-    BulletInstDrawData.Reserve(1024);
     RenderInstEntity REInstData = {};
     REInstData.Type = DrawInstType::Color;
-    REInstData.idMesh = Game->Gfx.idInstRectColor;
-    idInstBullets = Game->Gfx.CreateEntityInst(REInstData);
-#else
     // Bullet mesh:
     {
         constexpr u32 NumPoints = 8;
@@ -629,46 +544,37 @@ void BulletManager::Init(UBGameImpl* Game)
             Inds[BaseIdx + 2] = TriIdx + 1;
         }
 
-        idBulletMesh = Game->Gfx.CreateMesh(sizeof(VxMin), NumVerts, Verts, NumInds, Inds);
+        REInstData.idMesh = Game->Gfx.CreateMeshInst
+        (
+            sizeof(VxMin),
+            sizeof(InstRectColorData),
+            MeshInstStateT::DefaultMaxInstCount,
+            NumVerts,Verts,
+            NumInds, Inds
+        );
+        ASSERT(REInstData.idMesh);
     }
-#endif // BULLETMGR_USE_INSTDRAW()
+    idInstBullets = Game->Gfx.CreateEntityInst(REInstData);
 }
 
 void BulletManager::Term(UBGameImpl* Game)
 {
-#if BULLETMGR_USE_INSTDRAW()
+    RenderInstEntity* InstBulletData = Game->Gfx.GetEntityInst(idInstBullets);
+    ASSERT(InstBulletData);
+    ASSERT(InstBulletData->idMesh);
+    Game->Gfx.DestroyMeshInst(InstBulletData->idMesh);
     Game->Gfx.DestroyEntityInst(idInstBullets);
-#else
-    Game->Gfx.DestroyMesh(idBulletMesh);
-    for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
-    {
-        Game->Gfx.DestroyEntity(ActiveBullets[Idx].ID);
-    }
-    for (size_t Idx = 0; Idx < InactiveBullets.Num; Idx++)
-    {
-        Game->Gfx.DestroyEntity(InactiveBullets[Idx]);
-    }
-#endif // BULLETMGR_USE_INSTDRAW()
 }
 
 void BulletManager::Update(UBGameImpl* Game)
 {
-#if BULLETMGR_USE_INSTDRAW()
     BulletInstDrawData.Clear();
-#else
-#endif // BULLET_MGR_USE_INSTDRAW()
     for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
     {
         PerBulletData& Bullet = ActiveBullets[Idx];
         f32 dt = (f32)GlobalEngine->Clock->LastFrameDuration;
         v2f AdjVel = { Bullet.Vel.X * dt, Bullet.Vel.Y * dt };
         Bullet.Pos = Bullet.Pos + AdjVel;
-
-    #if BULLETMGR_USE_INSTDRAW()
-    #else
-        RenderEntity* BulletRE = Game->Gfx.GetEntity(Bullet.ID);
-        ASSERT(BulletRE);
-    #endif // BULLETMGR_USE_INSTDRAW()
 
         bool bHitsPlayer = Bullet.Type == BulletType::Player ? false : DoesCollide(Bullet, &Game->Player.BoundingBox);
         bool bHitsBoss = Bullet.Type == BulletType::Boss ? false : DoesCollide(Bullet, &Game->Boss.BoundingBox);
@@ -690,12 +596,6 @@ void BulletManager::Update(UBGameImpl* Game)
                 Game->Boss.Hit(Game);
                 NumBulletsPlayer--;
             }
-        #if BULLETMGR_USE_INSTDRAW()
-        #else
-            RenderEntityID idInactiveBullet = Bullet.ID;
-            BulletRE->bVisible = false;
-            InactiveBullets.Add(idInactiveBullet);
-        #endif // BULLETMGR_USE_INSTDRAW
             ActiveBullets.Remove(Idx);
             Idx--;
         }
@@ -704,41 +604,26 @@ void BulletManager::Update(UBGameImpl* Game)
             if (bDebugPrint)
             {
                 Outf("[debug][BulletManager]: Despawned offscreen bullet\n");
-        #if BULLETMGR_USE_INSTDRAW()
-        #else
-                Outf("\tRenderEntityID: %d\n", Bullet.ID);
-        #endif // BULLETMGR_USE_INSTDRAW()
                 Outf("\tType: %s\n", Bullet.Type == BulletType::Player ? "Player" : "Boss");
                 Outf("\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
                 Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
             }
             if (Bullet.Type == BulletType::Player) { NumBulletsPlayer--; }
             else { NumBulletsBoss--; }
-        #if BULLETMGR_USE_INSTDRAW()
-        #else
-            RenderEntityID idInactiveBullet = Bullet.ID;
-            BulletRE->bVisible = false;
-            InactiveBullets.Add(idInactiveBullet);
-        #endif // BULLETMGR_USE_INSTDRAW()
             ActiveBullets.Remove(Idx);
             Idx--;
         }
         else
         {
             float Scale = Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize;
-        #if BULLETMGR_USE_INSTDRAW()
             v4f Color = Bullet.Type == BulletType::Player ? PlayerBulletColor : BossBulletColor;
             InstRectColorData BulletDrawData = {};
             BulletDrawData.Rect = { Bullet.Pos, v2f{Scale, Scale} };
             BulletDrawData.Color = Color;
             BulletInstDrawData.Add(BulletDrawData);
-        #else
-            BulletRE->World = m4f::Scale(Scale, Scale, 1.0f) * m4f::Trans(Bullet.Pos.X, Bullet.Pos.Y, 0.0f);
-        #endif // BULLETMGR_USE_INSTDRAW()
         }
     }
 
-#if BULLETMGR_USE_INSTDRAW()
     if (BulletInstDrawData.Num)
     {
         RenderInstEntity* InstRE = Game->Gfx.GetEntityInst(idInstBullets);
@@ -746,8 +631,6 @@ void BulletManager::Update(UBGameImpl* Game)
         InstRE->NumInst = BulletInstDrawData.Num;
         InstRE->pInstData = BulletInstDrawData.Data;
     }
-#else
-#endif // BULLETMGR_USE_INSTDRAW()
 }
 
 void Background::Init(UBGameImpl* Game)

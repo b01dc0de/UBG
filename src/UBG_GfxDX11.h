@@ -80,6 +80,8 @@ struct MeshStateT
 
 struct MeshInstStateT
 {
+    static constexpr size_t DefaultMaxInstCount = 1024;
+
     size_t VertexSize = 0;
     size_t NumVerts = 0;
     size_t NumInds = 0;

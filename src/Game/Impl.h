@@ -74,14 +74,8 @@ enum struct BulletType
     Count
 };
 
-#define BULLETMGR_USE_INSTDRAW() (1)
-
 struct PerBulletData
 {
-#if BULLETMGR_USE_INSTDRAW()
-#else
-    RenderEntityID ID;
-#endif // BULLETMGR_USE_INSTDRAW()
     BulletType Type;
     v2f Pos;
     v2f Vel;
@@ -97,15 +91,11 @@ struct BulletManager
     static constexpr f32 PlayerBulletSize = 5.0f;
     static constexpr f32 BossBulletSize = 10.0f;
 
-#if BULLETMGR_USE_INSTDRAW()
-    RenderInstEntityID idInstBullets;
+    MeshInstStateID idInstBulletMesh = 0;
+    RenderInstEntityID idInstBullets = 0;
     DArray<InstRectColorData> BulletInstDrawData;
-#else
-    MeshStateID idBulletMesh;
-    DArray<RenderEntityID> InactiveBullets;
-#endif // BULLETMGR_USE_INSTDRAW()
-    int NumBulletsPlayer;
-    int NumBulletsBoss;
+    int NumBulletsPlayer = 0;
+    int NumBulletsBoss = 0;
     DArray<PerBulletData> ActiveBullets;
 
     static bool DoesCollide(PerBulletData& Bullet, AABB* BoundingBox);
