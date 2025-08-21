@@ -161,16 +161,10 @@ void PlayerShip::Init(UBGameImpl* Game)
 
 void PlayerShip::Term(UBGameImpl* Game)
 {
-    if (bUseShipMesh)
-    {
-        Game->Gfx.DestroyMesh(idShipMesh);
-    }
-    else
-    {
-        Game->Gfx.DestroyTexture(idShipTexture);
-    }
-    Game->Gfx.DestroyEntity(idShip);
     Healthbar.Term(Game);
+    if (bUseShipMesh) { Game->Gfx.DestroyMesh(idShipMesh); }
+    else { Game->Gfx.DestroyTexture(idShipTexture); }
+    Game->Gfx.DestroyEntity(idShip);
 }
 
 void PlayerShip::HandleInput(UBGameImpl* Game)
@@ -463,6 +457,7 @@ void BossShip::Init(UBGameImpl* Game)
 
 void BossShip::Term(UBGameImpl* Game)
 {
+    Healthbar.Term(Game);
     Game->Gfx.DestroyEntity(idBoundingBox);
     Game->Gfx.DestroyMesh(idBoundingBoxMesh);
     Game->Gfx.DestroyEntity(idShip);
@@ -566,6 +561,7 @@ void BulletManager::Term(UBGameImpl* Game)
     ASSERT(idInstBulletMesh);
     Game->Gfx.DestroyMeshInst(idInstBulletMesh);
     Game->Gfx.DestroyEntityInst(idInstBullets);
+    ActiveBullets.Term();
 }
 
 void BulletManager::Update(UBGameImpl* Game)
@@ -696,7 +692,7 @@ void Background::Init(UBGameImpl* Game)
                     HalfWidth - ((float)X / (float)(NumVertsX - 1)) * fWidth,
                     HalfHeight - ((float)Y / (float)(NumVertsY - 1)) * fHeight,
                     0.0f,
-                    1.0f
+                        1.0f
                 };
             }
         }
@@ -748,6 +744,7 @@ void Background::Init(UBGameImpl* Game)
 
 void Background::Term(UBGameImpl* Game)
 {
+    delete[] GridMeshVerts;
     Game->Gfx.DestroyEntity(idBackground);
     Game->Gfx.DestroyMesh(idBackgroundMesh);
     Game->Gfx.DestroyEntity(idGrid);
@@ -786,11 +783,67 @@ void Background::Update(UBGameImpl* Game)
     }
     float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
     RE->UnicolorState = { Lerp(CurrColor, NextColor, Factor) };
+
+    constexpr bool bUpdateGrid = true;
+    if (bUpdateGrid)
+    {
+        constexpr float SecondsPerUpdate = 1.0f / 15.0f;
+        static float LastUpdate = 0.0f;
+
+        if ((CurrTime - LastUpdate) > SecondsPerUpdate)
+        {
+            LastUpdate = CurrTime;
+
+            size_t NumVertsX = NumCellsX + 1;
+            size_t NumVertsY = NumCellsY + 1;
+            float fWidth = (float)GlobalEngine->Width;
+            float fHeight = (float)GlobalEngine->Height;
+            float HalfWidth = fWidth * 0.5f;
+            float HalfHeight = fHeight * 0.5f;
+            float CellSizeX = 1.0f / (float)(NumVertsX - 1) * fWidth;
+            float CellSizeY = 1.0f / (float)(NumVertsY - 1) * fHeight;
+            float MaxVarianceX = CellSizeX * 0.25f;
+            float MaxVarianceY = CellSizeY * 0.25f;
+            for (size_t X = 0; X < NumVertsX; X++)
+            {
+                for (size_t Y = 0; Y < NumVertsY; Y++)
+                {
+                    float OriginalX = HalfWidth - ((float)X / (float)(NumVertsX - 1)) * fWidth;
+                    float OriginalY = HalfHeight - ((float)Y / (float)(NumVertsY - 1)) * fHeight;
+
+                    size_t VxIdx = Y * NumVertsX + X;
+                    float CurrX = GridMeshVerts[VxIdx].Pos.X;
+                    float CurrY = GridMeshVerts[VxIdx].Pos.Y;
+
+                    float DiffX = (GetRandomFloatNorm() - 0.5f) * MaxVarianceX;
+                    float DiffY = (GetRandomFloatNorm() - 0.5f) * MaxVarianceY;
+
+                    float MinX = OriginalX - MaxVarianceX;
+                    float MaxX = OriginalX + MaxVarianceX;
+                    float MinY = OriginalY - MaxVarianceY;
+                    float MaxY = OriginalY + MaxVarianceY;
+                    float NewX = Clamp(MinX, MaxX, CurrX + DiffX);
+                    float NewY = Clamp(MinY, MaxY, CurrY + DiffY);
+
+                    GridMeshVerts[VxIdx] = { NewX, NewY, 0.0f, 1.0f };
+                }
+            }
+
+            MeshStateT* GridMesh = Game->Gfx.GetMesh(idGridMesh);
+            ASSERT(GridMesh);
+
+            Game->Gfx.Backend->Context->UpdateSubresource(
+                GridMesh->VxBuffer, 0, nullptr,
+                GridMeshVerts, (u32)(sizeof(VxMin) * NumVerts), 0
+            );
+        }
+    }
 }
 
 bool UBGameImpl::Init()
 {
     bool bResult = Gfx.Init((UBG_GfxT*)GlobalEngine->GfxState);
+    ASSERT(bResult);
 
     BG.Init(this);
     BulletMgr.Init(this);

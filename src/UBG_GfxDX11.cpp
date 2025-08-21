@@ -582,8 +582,9 @@ bool UBG_Gfx_DX11::Term()
     SafeRelease(DepthStencil);
     SafeRelease(DepthStencilView);
 
-    SafeRelease(RenderTargetView);
     SafeRelease(DefaultRasterState);
+    SafeRelease(WireframeRasterState);
+    SafeRelease(RenderTargetView);
 
     SafeRelease(SwapChain);
     SafeRelease(BackBuffer);
@@ -1075,6 +1076,11 @@ bool GfxSystem::Term()
         Meshes.ActiveList[Idx].SafeRelease();
     }
     Meshes.Term();
+    for (size_t Idx = 0; Idx < MeshesInst.NumActive; Idx++)
+    {
+        MeshesInst.ActiveList[Idx].SafeRelease();
+    }
+    MeshesInst.Term();
     return true;
 }
 
