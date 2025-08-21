@@ -613,15 +613,24 @@ void BulletManager::Update(UBGameImpl* Game)
         }
         else
         {
+            static constexpr bool bDrawBulletOutline = true;
             float Scale = Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize;
             v4f Color = Bullet.Type == BulletType::Player ? ColorScheme::PlayerBullets : ColorScheme::BossBullets;
             InstRectColorData BulletDrawData = {};
             BulletDrawData.Rect = { Bullet.Pos, v2f{Scale, Scale} };
             BulletDrawData.Color = Color;
             BulletInstDrawData.Add(BulletDrawData);
+            if (bDrawBulletOutline)
+            {
+                float fOutlineSize = Scale * 0.2f;
+                BulletDrawData.Rect = { Bullet.Pos, v2f{Scale + fOutlineSize, Scale + fOutlineSize} };
+                BulletDrawData.Color = ColorScheme::BulletOutline;
+                BulletInstDrawData.Add(BulletDrawData);
+            }
         }
     }
 
+    // NOTE: For _safety reasons_ right now: we require explicitly setting idInst's array num / array data every frame
     if (BulletInstDrawData.Num)
     {
         RenderInstEntity* InstRE = Game->Gfx.GetEntityInst(idInstBullets);
@@ -667,7 +676,6 @@ void Background::Init(UBGameImpl* Game)
         idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
         ASSERT(idBackground);
     }
-
 
     // Background grid:
     {
@@ -736,7 +744,7 @@ void Background::Init(UBGameImpl* Game)
         RenderEntity GridMeshData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idGridMesh);
         GridMeshData.bWireframe = true;
         GridMeshData.World = m4f::Trans(0.0f, 0.0f, +0.75f);
-        GridMeshData.UnicolorState = { v4f{57.0f / 255.0f, 66.0f / 255.0f, 69.0f / 255.0f, 1.0f} };
+        GridMeshData.UnicolorState = { ColorScheme::BackgroundGrid };
         idGrid = Game->Gfx.CreateEntity(GridMeshData);
         ASSERT(idGrid);
     }

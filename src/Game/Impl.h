@@ -45,7 +45,9 @@ struct ColorScheme
 {
     static constexpr v4f BossShip{ 1.0f, 1.0f, 0.0f, 1.0f };
     static constexpr v4f BossBullets{ 0.9f, 0.1f, 0.1f, 1.0f };
-    static constexpr v4f PlayerBullets{ 0.8f, 0.8f, 0.8f, 0.8f };
+    static constexpr v4f PlayerBullets{ 0.1f, 0.1f, 0.1f, 1.0f };
+    static constexpr v4f BulletOutline{ 1.0f, 1.0f, 1.0f, 0.8f };
+    static constexpr v4f BackgroundGrid{57.0f / 255.0f, 66.0f / 255.0f, 69.0f / 255.0f, 1.0f};
 };
 
 struct VisualProgressBar
