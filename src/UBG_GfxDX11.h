@@ -17,7 +17,8 @@ struct UBG_Gfx_DX11
     IDXGISwapChain1* SwapChain;
     ID3D11Texture2D* BackBuffer;
     ID3D11RenderTargetView* RenderTargetView;
-    ID3D11RasterizerState* RasterState;
+    ID3D11RasterizerState* DefaultRasterState;
+    ID3D11RasterizerState* WireframeRasterState;
     ID3D11Texture2D* DepthStencil;
     ID3D11DepthStencilView* DepthStencilView;
     ID3D11BlendState* DefaultBlendState;
@@ -138,6 +139,7 @@ struct DrawUnicolorState
 struct RenderEntity
 {
     bool bVisible = true;
+    bool bWireframe = false;
     m4f World = m4f::Identity();
     DrawType Type = DrawType::Count;
     MeshStateID idMesh = 0;
@@ -163,6 +165,7 @@ struct InstRectColorData
 struct RenderInstEntity
 {
     bool bVisible = true;
+    bool bWireframe = false;
     m4f World = m4f::Identity();
     DrawInstType Type = DrawInstType::Count;
     MeshInstStateID idMesh = 0;

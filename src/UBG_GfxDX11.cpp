@@ -291,6 +291,15 @@ void RenderEntity::Draw(GfxSystem* System)
     UBG_GfxContextT* Context = System->Backend->Context;
     MeshStateT* pMesh = System->Meshes.Get(idMesh);
     ASSERT(pMesh);
+    
+    if (bWireframe)
+    {
+        Context->RSSetState(System->Backend->WireframeRasterState);
+    }
+    else
+    {
+        Context->RSSetState(System->Backend->DefaultRasterState);
+    }
 
     switch (Type)
     {
@@ -357,6 +366,15 @@ void RenderInstEntity::Draw(GfxSystem* System)
     UBG_GfxContextT* Context = System->Backend->Context;
     MeshInstStateT* pMesh = System->MeshesInst.Get(idMesh);
     ASSERT(pMesh);
+
+    if (bWireframe)
+    {
+        Context->RSSetState(System->Backend->WireframeRasterState);
+    }
+    else
+    {
+        Context->RSSetState(System->Backend->DefaultRasterState);
+    }
 
     switch (Type)
     {
@@ -500,15 +518,25 @@ bool UBG_Gfx_DX11::Init()
     DepthStencilViewDesc.Texture2D.MipSlice = 0;
     Device->CreateDepthStencilView(DepthStencil, &DepthStencilViewDesc, &DepthStencilView);
 
-    D3D11_RASTERIZER_DESC RasterDesc = {};
-    RasterDesc.FillMode = D3D11_FILL_SOLID;
-    RasterDesc.CullMode = D3D11_CULL_BACK;
-    RasterDesc.FrontCounterClockwise = TRUE;
-    RasterDesc.DepthClipEnable = TRUE;
-    RasterDesc.ScissorEnable = FALSE;
-    RasterDesc.MultisampleEnable = TRUE;
-    RasterDesc.AntialiasedLineEnable = TRUE;
-    Device->CreateRasterizerState(&RasterDesc, &RasterState);
+    D3D11_RASTERIZER_DESC DefaultRasterDesc = {};
+    DefaultRasterDesc.FillMode = D3D11_FILL_SOLID;
+    DefaultRasterDesc.CullMode = D3D11_CULL_BACK;
+    DefaultRasterDesc.FrontCounterClockwise = TRUE;
+    DefaultRasterDesc.DepthClipEnable = TRUE;
+    DefaultRasterDesc.ScissorEnable = FALSE;
+    DefaultRasterDesc.MultisampleEnable = TRUE;
+    DefaultRasterDesc.AntialiasedLineEnable = TRUE;
+    Device->CreateRasterizerState(&DefaultRasterDesc, &DefaultRasterState);
+
+    D3D11_RASTERIZER_DESC WireframeRasterDesc = {};
+    WireframeRasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+    WireframeRasterDesc.CullMode = D3D11_CULL_NONE;
+    WireframeRasterDesc.FrontCounterClockwise = TRUE;
+    WireframeRasterDesc.DepthClipEnable = TRUE;
+    WireframeRasterDesc.ScissorEnable = FALSE;
+    WireframeRasterDesc.MultisampleEnable = TRUE;
+    WireframeRasterDesc.AntialiasedLineEnable = TRUE;
+    Device->CreateRasterizerState(&WireframeRasterDesc, &WireframeRasterState);
 
     D3D11_VIEWPORT ViewportDesc = {};
     ViewportDesc.TopLeftX = 0.0f;
@@ -537,8 +565,8 @@ bool UBG_Gfx_DX11::Init()
     Context->OMSetRenderTargets(1, &RenderTargetView, DepthStencilView);
 
     bool bResult = Device && Context &&
-        SwapChain && BackBuffer &&
-        RenderTargetView && RasterState &&
+        SwapChain && BackBuffer && RenderTargetView &&
+        DefaultRasterState && WireframeRasterState &&
         DepthStencil && DepthStencilView &&
         DefaultBlendState;
 
@@ -555,7 +583,7 @@ bool UBG_Gfx_DX11::Term()
     SafeRelease(DepthStencilView);
 
     SafeRelease(RenderTargetView);
-    SafeRelease(RasterState);
+    SafeRelease(DefaultRasterState);
 
     SafeRelease(SwapChain);
     SafeRelease(BackBuffer);
@@ -959,7 +987,7 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             { { +0.5f, -0.5f, +0.5f, 1.0f}, { 1.0f, 1.0f } },
         };
 
-        u32 QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+        u32 QuadInds[] = { 0, 2, 1,    1, 2, 3 };
 
         idQuadTexture = CreateMesh(
             sizeof(VxTex),

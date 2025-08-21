@@ -13,7 +13,7 @@ bool UBGameImplDemo::Init()
             { { +0.5f, -0.5f, 0.5f, 1.0f}, { 0.0f, 0.0f, 1.0f, 1.0f } },
         };
 
-        unsigned int TriangleInds[] = { 0, 2, 1 };
+        unsigned int TriangleInds[] = { 0, 1, 2 };
 
         idTriangle = System.CreateMesh(
             sizeof(VxColor),
@@ -44,7 +44,8 @@ bool UBGameImplDemo::Init()
             }
         }
 
-        unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+        //unsigned int QuadInds[] = { 0, 1, 2,    1, 3, 2 };
+        unsigned int QuadInds[] = { 0, 2, 1,    1, 2, 3 };
 
         idQuad = System.CreateMesh(
             sizeof(VxTex),

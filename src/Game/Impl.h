@@ -4,6 +4,19 @@
 struct UBGameImpl;
 
 // TODO: Implement a 'DefaultSpriteWorld'
+// TODO: Decide on final origin placement (middle of screen OR bottom left? (top left, even?))
+// TODO: Implement a real background
+//      - 3D meshes in the background to give illusion of flying around/in space
+//      - Ideas: scrolling texture, Resogun-like center cylinder 'world', grid-like mesh that bends and is effected by gameplay (water-like, even)
+// TODO: Implement a particle emitter for effects
+// TODO: Implement boss ship behavior
+//      - Different attack styles
+//      - Ability to switch between different patterns
+//      - Spawning multiple bullets at a time in different patterns
+// TODO: Implement different PlayerShip stats/config
+//      - Bullet size/speed
+//      - Ship size/speed
+//      - Bullet types (3-wide, different bullet effects/qualities)
 
 /*
     - NOTE: Currently, here's the few rendering 'stages' that we use
@@ -13,6 +26,19 @@ struct UBGameImpl;
         - TODO: Particles/Effects
         - Bullets
         - UI
+    - The easy way of distinguishing/enforcing these can be:
+        - Every (2D) mesh lives on the XY plane (Z == 0)
+        - Each mesh belongs to a given layer
+        - Each layer corresponds to a different Z transpose for that layer
+            and we apply that to each Entity's World matrix
+        - We would still care about dividing the background world from the main gameplay
+            (rendering background world completely first BEFORE everything else)
+    - The more complex way would be having some sort of formal layer system:
+        - Each layer would need to know about its current RenderEntity's
+        - This could potentially also be used to batch common graphics state
+        - Depending on Alpha/BlendState setup we wouldn't need to care about Z (although we should anyway)
+        - And simply just render entities from the furthest back layer to the front
+        - Requires a lot more work than the above solution
 */
 
 struct ColorScheme
@@ -121,6 +147,24 @@ struct BulletManager
     void Update(UBGameImpl* Game);
 };
 
+/*
+struct PerParticleData
+{
+};
+
+struct ParticleEmitter
+{
+    MeshInstStateID idInstParticleMesh = 0;
+    RenderInstEntityID idInstParticles = 0;
+    DArray<InstRectColorData> ParticleInstDrawData;
+    DArray<PerParticleData> ActiveParticles;
+
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
+};
+*/
+
 struct Background
 {
     MeshStateID idBackgroundMesh;
@@ -129,6 +173,14 @@ struct Background
     v4f NextColor;
     f32 LastSwitchTime;
     f32 StepDurationSeconds;
+
+    // 3D background:
+    MeshStateID idGridMesh = 0;
+    RenderEntityID idGrid = 0;
+    size_t NumCellsX = 0;
+    size_t NumCellsY = 0;
+    size_t NumVerts = 0;
+    VxMin* GridMeshVerts = nullptr;
 
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);

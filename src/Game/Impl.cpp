@@ -390,8 +390,9 @@ void BossShip::Init(UBGameImpl* Game)
         {
             size_t BaseIdx = TriIdx * 3;
             BossInds[BaseIdx + 0] = 0;
-            BossInds[BaseIdx + 1] = TriIdx == BossNumTris - 1 ? 1 : TriIdx + 2;
-            BossInds[BaseIdx + 2] = TriIdx + 1;
+            //BossInds[BaseIdx + 1] = TriIdx == BossNumTris - 1 ? 1 : TriIdx + 2;
+            BossInds[BaseIdx + 1] = TriIdx + 1;
+            BossInds[BaseIdx + 2] = TriIdx == BossNumTris - 1 ? 1 : TriIdx + 2;
         }
         idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
         ASSERT(idShipMesh);
@@ -540,19 +541,20 @@ void BulletManager::Init(UBGameImpl* Game)
         {
             size_t BaseIdx = TriIdx * 3;
             Inds[BaseIdx + 0] = 0;
-            Inds[BaseIdx + 1] = TriIdx == NumTris - 1 ? 1 : TriIdx + 2;
-            Inds[BaseIdx + 2] = TriIdx + 1;
+            Inds[BaseIdx + 1] = TriIdx + 1;
+            Inds[BaseIdx + 2] = TriIdx == NumTris - 1 ? 1 : TriIdx + 2;
         }
 
-        REInstData.idMesh = Game->Gfx.CreateMeshInst
+        idInstBulletMesh = Game->Gfx.CreateMeshInst
         (
             sizeof(VxMin),
             sizeof(InstRectColorData),
             MeshInstStateT::DefaultMaxInstCount,
-            NumVerts,Verts,
+            NumVerts, Verts,
             NumInds, Inds
         );
-        ASSERT(REInstData.idMesh);
+        ASSERT(idInstBulletMesh);
+        REInstData.idMesh = idInstBulletMesh;
     }
     idInstBullets = Game->Gfx.CreateEntityInst(REInstData);
 }
@@ -561,8 +563,8 @@ void BulletManager::Term(UBGameImpl* Game)
 {
     RenderInstEntity* InstBulletData = Game->Gfx.GetEntityInst(idInstBullets);
     ASSERT(InstBulletData);
-    ASSERT(InstBulletData->idMesh);
-    Game->Gfx.DestroyMeshInst(InstBulletData->idMesh);
+    ASSERT(idInstBulletMesh);
+    Game->Gfx.DestroyMeshInst(idInstBulletMesh);
     Game->Gfx.DestroyEntityInst(idInstBullets);
 }
 
@@ -640,6 +642,7 @@ void Background::Init(UBGameImpl* Game)
     LastSwitchTime = 0.0f;
     StepDurationSeconds = 2.0f;
 
+    // Flat background
     {
         VxMin BackgroundVerts[] =
         {
@@ -651,8 +654,8 @@ void Background::Init(UBGameImpl* Game)
 
         u32 BackgroundInds[] =
         {
-            0, 1, 2,
-            1, 3, 2
+            0, 2, 1,
+            1, 2, 3
         };
 
         idBackgroundMesh = Game->Gfx.CreateMesh
@@ -662,18 +665,93 @@ void Background::Init(UBGameImpl* Game)
             ARRAY_SIZE(BackgroundInds), BackgroundInds
         );
         ASSERT(idBackgroundMesh);
+
+        RenderEntity BackgroundRenderData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBackgroundMesh);
+        BackgroundRenderData.UnicolorState = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+        idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
+        ASSERT(idBackground);
     }
 
-    RenderEntity BackgroundRenderData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBackgroundMesh);
-    BackgroundRenderData.UnicolorState = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-    idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
-    ASSERT(idBackground);
+
+    // Background grid:
+    {
+        NumCellsX = 16;
+        NumCellsY = 9;
+
+        size_t NumVertsX = NumCellsX + 1;
+        size_t NumVertsY = NumCellsY + 1;
+        NumVerts = NumVertsX * NumVertsY;
+        GridMeshVerts = new VxMin[NumVerts];
+
+        float fWidth = (float)GlobalEngine->Width;
+        float fHeight = (float)GlobalEngine->Height;
+        float HalfWidth = fWidth * 0.5f;
+        float HalfHeight = fHeight * 0.5f;
+        for (size_t X = 0; X < NumVertsX; X++)
+        {
+            for (size_t Y = 0; Y < NumVertsY; Y++)
+            {
+                // Within range of normalized coordinates [-.5, +.5]
+                GridMeshVerts[Y * NumVertsX + X] = {
+                    HalfWidth - ((float)X / (float)(NumVertsX - 1)) * fWidth,
+                    HalfHeight - ((float)Y / (float)(NumVertsY - 1)) * fHeight,
+                    0.0f,
+                    1.0f
+                };
+            }
+        }
+
+        size_t NumTris = NumCellsX * NumCellsY * 2;
+        size_t NumInds = NumTris * 3;
+        u32* GridMeshInds = new u32[NumInds];
+        size_t IndexWrite = 0;
+        for (size_t X = 0; X < NumCellsX; X++)
+        {
+            for (size_t Y = 0; Y < NumCellsY; Y++)
+            {
+                u32 TopLeftIndex = (u32)(Y * NumVertsX + X);
+                u32 TopRightIndex = (u32)(TopLeftIndex + 1);
+                u32 BotLeftIndex = (u32)(TopLeftIndex + NumVertsX);
+                u32 BotRightIndex = (u32)(BotLeftIndex + 1);
+
+                GridMeshInds[IndexWrite + 0] = TopLeftIndex;
+                GridMeshInds[IndexWrite + 1] = BotLeftIndex;
+                GridMeshInds[IndexWrite + 2] = TopRightIndex;
+                IndexWrite += 3;
+
+                GridMeshInds[IndexWrite + 0] = TopRightIndex;
+                GridMeshInds[IndexWrite + 1] = BotLeftIndex;
+                GridMeshInds[IndexWrite + 2] = BotRightIndex;
+                IndexWrite += 3;
+            }
+        }
+        ASSERT(IndexWrite == NumInds);
+
+        idGridMesh = Game->Gfx.CreateMesh
+        (
+            sizeof(VxMin),
+            NumVerts,
+            GridMeshVerts,
+            NumInds,
+            GridMeshInds
+        );
+        ASSERT(idGridMesh);
+        delete[] GridMeshInds;
+        RenderEntity GridMeshData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idGridMesh);
+        GridMeshData.bWireframe = true;
+        GridMeshData.World = m4f::Trans(0.0f, 0.0f, +0.75f);
+        GridMeshData.UnicolorState = { v4f{57.0f / 255.0f, 66.0f / 255.0f, 69.0f / 255.0f, 1.0f} };
+        idGrid = Game->Gfx.CreateEntity(GridMeshData);
+        ASSERT(idGrid);
+    }
 }
 
 void Background::Term(UBGameImpl* Game)
 {
     Game->Gfx.DestroyEntity(idBackground);
     Game->Gfx.DestroyMesh(idBackgroundMesh);
+    Game->Gfx.DestroyEntity(idGrid);
+    Game->Gfx.DestroyMesh(idGridMesh);
 }
 
 void Background::Update(UBGameImpl* Game)
