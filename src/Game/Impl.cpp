@@ -446,7 +446,7 @@ void BossShip::Init(UBGameImpl* Game)
         ASSERT(idBoundingBoxMesh);
 
         RenderEntity BoundingBoxRenderData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0f), DrawType::Unicolor, idBoundingBoxMesh);
-        BoundingBoxRenderData.UnicolorState = { { 1.0f, 1.0f, 0.0f, 1.0f } };
+        BoundingBoxRenderData.UnicolorState = { ColorScheme::BossShip };
         idBoundingBox = Game->Gfx.CreateEntity(BoundingBoxRenderData);
     }
 
@@ -616,7 +616,7 @@ void BulletManager::Update(UBGameImpl* Game)
         else
         {
             float Scale = Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize;
-            v4f Color = Bullet.Type == BulletType::Player ? PlayerBulletColor : BossBulletColor;
+            v4f Color = Bullet.Type == BulletType::Player ? ColorScheme::PlayerBullets : ColorScheme::BossBullets;
             InstRectColorData BulletDrawData = {};
             BulletDrawData.Rect = { Bullet.Pos, v2f{Scale, Scale} };
             BulletDrawData.Color = Color;

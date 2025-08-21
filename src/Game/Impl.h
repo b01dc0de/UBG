@@ -5,6 +5,23 @@ struct UBGameImpl;
 
 // TODO: Implement a 'DefaultSpriteWorld'
 
+/*
+    - NOTE: Currently, here's the few rendering 'stages' that we use
+        - Pure background
+        - TODO: Real background (i.e. 3d meshes in the background of the level)
+        - Ships (player + enemy)
+        - TODO: Particles/Effects
+        - Bullets
+        - UI
+*/
+
+struct ColorScheme
+{
+    static constexpr v4f BossShip{ 1.0f, 1.0f, 0.0f, 1.0f };
+    static constexpr v4f BossBullets{ 0.9f, 0.1f, 0.1f, 1.0f };
+    static constexpr v4f PlayerBullets{ 0.8f, 0.8f, 0.8f, 0.8f };
+};
+
 struct VisualProgressBar
 {
     static constexpr f32 fPadding = 2.0f;
@@ -86,8 +103,6 @@ struct BulletManager
     static constexpr bool bDebugPrint = false;
     static constexpr int MaxBulletsPlayer = 256;
     static constexpr int MaxBulletsBoss = 256;
-    static constexpr v4f PlayerBulletColor = { 0.8f, 0.8f, 0.8f, 0.8f };
-    static constexpr v4f BossBulletColor = { 0.9f, 0.1f, 0.1f, 1.0f };
     static constexpr f32 PlayerBulletSize = 5.0f;
     static constexpr f32 BossBulletSize = 10.0f;
 
