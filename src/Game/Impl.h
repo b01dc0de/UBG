@@ -3,8 +3,11 @@
 
 struct UBGameImpl;
 
+// ENGINE TODOS:
 // TODO: Implement a 'DefaultSpriteWorld'
 // TODO: Decide on final origin placement (middle of screen OR bottom left? (top left, even?))
+
+// GAME TODOS:
 // TODO: Implement a real background
 //      - 3D meshes in the background to give illusion of flying around/in space
 //      - Ideas: scrolling texture, Resogun-like center cylinder 'world', grid-like mesh that bends and is effected by gameplay (water-like, even)
@@ -17,6 +20,8 @@ struct UBGameImpl;
 //      - Bullet size/speed
 //      - Ship size/speed
 //      - Bullet types (3-wide, different bullet effects/qualities)
+// TODO: Implement a basic GameObject interface
+//      - I've tried to avoid this for now, but it seems necessary at this point
 
 /*
     - NOTE: Currently, here's the few rendering 'stages' that we use
@@ -39,6 +44,20 @@ struct UBGameImpl;
         - Depending on Alpha/BlendState setup we wouldn't need to care about Z (although we should anyway)
         - And simply just render entities from the furthest back layer to the front
         - Requires a lot more work than the above solution
+    - A less complex layer system:
+        - We define an enum (or integer range, whatever) of distinct layers
+            - Each RenderEntity/RenderEntityInst has a set layer value
+            - At Gfx::Draw:
+                - Compile a list of RenderEntity, Layer pairs
+                - For each layer (starting at Layer 0 through Layer N):
+                    - Draw all entities / entitiesinst
+        - Other thoughts about this:
+            - It's very unlikely that a RenderEntity will ever need to change layers (without its ID being recycled, etc.)
+            - This could be expanded into include more layer information, for example:
+                - Camera info (2D vs 3D, etc.)
+                - DrawType
+                - Alpha / Blend state
+                - Wireframe / etc.
 */
 
 struct ColorScheme
