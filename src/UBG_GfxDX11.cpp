@@ -15,7 +15,6 @@ void SafeRelease(IUnknown* Ptr)
     }
 }
 
-
 void DrawStateT::Bind(GfxSystem* System)
 {
     Bind(System, 0, nullptr, 0, nullptr);
@@ -134,6 +133,12 @@ void MeshInstStateT::SafeRelease()
     ::SafeRelease(VxBuffer);
     ::SafeRelease(InstBuffer);
     ::SafeRelease(IxBuffer);
+}
+
+void TextureStateT::SafeRelease()
+{
+    ::SafeRelease(Texture);
+    ::SafeRelease(SRV);
 }
 
 int CompileShaderHLSL
@@ -1049,38 +1054,33 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 bool GfxSystem::Term()
 {
     // TODO: Make sure we are actually clearing out gfx state / references correctly here
+
+#define SAFERELEASE_ALL_METHOD(List) \
+    for (size_t Idx = 0; Idx < List.NumActive; Idx++) { List.ActiveList[Idx].SafeRelease(); }
+
+#define SAFERELEASE_ALL_FUNC(List) \
+    for (size_t Idx = 0; Idx < List.NumActive; Idx++) { SafeRelease(List.ActiveList[Idx]); }
+
     Entities.Term();
-    for (size_t Idx = 0; Idx < DrawStates.NumActive; Idx++)
-    {
-        DrawStates.ActiveList[Idx].SafeRelease();
-    }
+
+    SAFERELEASE_ALL_METHOD(DrawStates);
     DrawStates.Term();
-    for (size_t Idx = 0; Idx < ShaderBuffers.NumActive; Idx++)
-    {
-        SafeRelease(ShaderBuffers.ActiveList[Idx]);
-    }
+    SAFERELEASE_ALL_METHOD(DrawInstStates);
+    DrawInstStates.Term();
+
+    SAFERELEASE_ALL_FUNC(ShaderBuffers);
     ShaderBuffers.Term();
-    for (size_t Idx = 0; Idx < Textures.NumActive; Idx++)
-    {
-        SafeRelease(Textures.ActiveList[Idx].Texture);
-        SafeRelease(Textures.ActiveList[Idx].SRV);
-    }
+
+    SAFERELEASE_ALL_METHOD(Textures);
     Textures.Term();
-    for (size_t Idx = 0; Idx < Samplers.NumActive; Idx++)
-    {
-        SafeRelease(Samplers.ActiveList[Idx]);
-    }
+    SAFERELEASE_ALL_FUNC(Samplers);
     Samplers.Term();
-    for (size_t Idx = 0; Idx < Meshes.NumActive; Idx++)
-    {
-        Meshes.ActiveList[Idx].SafeRelease();
-    }
+
+    SAFERELEASE_ALL_METHOD(Meshes);
     Meshes.Term();
-    for (size_t Idx = 0; Idx < MeshesInst.NumActive; Idx++)
-    {
-        MeshesInst.ActiveList[Idx].SafeRelease();
-    }
+    SAFERELEASE_ALL_METHOD(MeshesInst);
     MeshesInst.Term();
+
     return true;
 }
 
