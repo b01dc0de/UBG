@@ -644,12 +644,39 @@ void BulletManager::Update(UBGameImpl* Game)
 
 void DebugVisualizer::Init(UBGameImpl* Game)
 {
+    // Init BB mesh:
+    {
+        VxMin MeshVerts[] = {
+            { { 0.0f, 1.0f, +0.5f, 1.0f} },
+            { { 1.0f, 1.0f, +0.5f, 1.0f} },
+            { { 0.0f, 0.0f, +0.5f, 1.0f} },
+            { { 1.0f, 0.0f, +0.5f, 1.0f} },
+        };
+
+        u32 MeshInds[] = {
+            0, 1,
+            0, 2,
+            2, 3,
+            3, 1
+        };
+
+        idMeshBB = Game->Gfx.CreateMeshInst(
+            sizeof(VxMin),
+            sizeof(InstRectColorData),
+            MeshInstStateT::DefaultMaxInstCount,
+            ARRAY_SIZE(MeshVerts),
+            MeshVerts,
+            ARRAY_SIZE(MeshInds),
+            MeshInds,
+            D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+        );
+        ASSERT(idMeshBB);
+    }
+
     RenderInstEntity InstData = {};
-    InstData.bVisible = true;
     InstData.bWireframe = true;
-    InstData.World = m4f::Identity();
     InstData.Type = DrawInstType::Color;
-    InstData.idMesh = Game->Gfx.idInstRectColor;
+    InstData.idMesh = idMeshBB; //Game->Gfx.idInstRectColor;
     idInstBBs = Game->Gfx.CreateEntityInst(InstData);
     ASSERT(idInstBBs);
 
@@ -661,6 +688,7 @@ void DebugVisualizer::Term(UBGameImpl* Game)
     BoundingBoxDraws.Term();
 
     Game->Gfx.DestroyEntityInst(idInstBBs);
+    Game->Gfx.DestroyMeshInst(idMeshBB);
 }
 
 void DebugVisualizer::Update(UBGameImpl* Game)

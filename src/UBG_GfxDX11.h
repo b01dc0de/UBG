@@ -71,6 +71,7 @@ struct MeshStateT
     size_t VertexSize;
     size_t NumVerts;
     size_t NumInds;
+    D3D_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     ID3D11Buffer* VxBuffer;
     ID3D11Buffer* IxBuffer;
 
@@ -89,6 +90,7 @@ struct MeshInstStateT
     size_t PerInstSize = 0;
     size_t MaxInstCount = 0;
     size_t InstBufferSize = 0;
+    D3D_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
     ID3D11Buffer* VxBuffer = nullptr;
     ID3D11Buffer* InstBuffer = nullptr;
     ID3D11Buffer* IxBuffer = nullptr;
@@ -236,8 +238,8 @@ struct GfxSystem
     void DestroyEntityInst(RenderInstEntityID ID);
     MeshStateT* GetMesh(MeshStateID ID);
     MeshInstStateT* GetMeshInst(MeshInstStateID ID);
-    MeshStateID CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
-    MeshInstStateID CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData);
+    MeshStateID CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData, D3D11_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    MeshInstStateID CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData, D3D11_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     void DestroyMesh(MeshStateID ID);
     void DestroyMeshInst(MeshInstStateID ID);
     TextureStateT* GetTexture(TextureStateID ID);

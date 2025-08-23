@@ -70,7 +70,7 @@ void MeshStateT::Bind(UBG_GfxContextT* Context)
     u32 VxOffset = 0u;
     Context->IASetVertexBuffers(0, 1, &VxBuffer, &VxStride, &VxOffset);
     Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-    Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Context->IASetPrimitiveTopology(TopType);
 }
 
 void MeshStateT::Draw(UBG_GfxContextT* Context)
@@ -98,7 +98,7 @@ void MeshInstStateT::Bind(UBG_GfxContextT* Context)
     u32 VxInstOffsets[] = { 0, 0 };
     Context->IASetVertexBuffers(0, ARRAY_SIZE(VxInstBuffers), VxInstBuffers, VxInstStrides, VxInstOffsets);
     Context->IASetIndexBuffer(IxBuffer, DXGI_FORMAT_R32_UINT, 0);
-    Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Context->IASetPrimitiveTopology(TopType);
 }
 
 void MeshInstStateT::Draw(UBG_GfxContextT* Context, size_t NumInst, void* pInstData)
@@ -168,8 +168,9 @@ MeshStateT CreateMeshState
     size_t VertexSize,
     size_t NumVertices,
     void* VertexData,
-    size_t NumIndices,
-    unsigned int* IndexData
+    size_t NumIndices = 0,
+    unsigned int* IndexData = nullptr,
+    D3D11_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
 );
 MeshInstStateT CreateMeshInstState
 (
@@ -179,8 +180,9 @@ MeshInstStateT CreateMeshInstState
     size_t MaxInstCount,
     size_t NumVertices,
     void* VertexData,
-    size_t NumIndices,
-    u32* IndexData
+    size_t NumIndices = 0,
+    u32* IndexData = nullptr,
+    D3D11_PRIMITIVE_TOPOLOGY TopType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
 );
 
 RenderEntity RenderEntity::Default(m4f World, DrawType Type, MeshStateID idMesh)
@@ -743,7 +745,8 @@ MeshStateT CreateMeshState
     size_t NumVertices,
     void* VertexData,
     size_t NumIndices,
-    unsigned int* IndexData
+    unsigned int* IndexData,
+    D3D11_PRIMITIVE_TOPOLOGY TopType
 )
 {
     ASSERT(VertexData);
@@ -753,6 +756,7 @@ MeshStateT CreateMeshState
     Result.VertexSize = VertexSize;
     Result.NumVerts = NumVertices;
     Result.NumInds = NumIndices;
+    Result.TopType = TopType;
 
     size_t VxDataSize = VertexSize * NumVertices;
     D3D11_BUFFER_DESC VertexBufferDesc = { (u32)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
@@ -779,7 +783,8 @@ MeshInstStateT CreateMeshInstState
     size_t NumVertices,
     void* VertexData,
     size_t NumIndices,
-    u32* IndexData
+    u32* IndexData,
+    D3D11_PRIMITIVE_TOPOLOGY TopType
 )
 {
     MeshInstStateT Result;
@@ -790,6 +795,7 @@ MeshInstStateT CreateMeshInstState
     Result.PerInstSize = PerInstSize;
     Result.MaxInstCount = MaxInstCount;
     Result.InstBufferSize = PerInstSize * MaxInstCount;
+    Result.TopType = TopType;
 
     size_t VxDataSize = VertexSize * NumVertices;
     D3D11_BUFFER_DESC VertexBufferDesc = { (u32)VxDataSize, D3D11_USAGE_DEFAULT, D3D11_BIND_VERTEX_BUFFER, 0, 0 };
@@ -1124,7 +1130,7 @@ MeshInstStateT* GfxSystem::GetMeshInst(MeshInstStateID ID)
     return MeshesInst.Get(ID);
 }
 
-MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
+MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData, D3D11_PRIMITIVE_TOPOLOGY TopType)
 {
     MeshStateT NewMesh = CreateMeshState
     (
@@ -1133,12 +1139,13 @@ MeshStateID GfxSystem::CreateMesh(size_t VertexSize, size_t NumVertices, void* V
         NumVertices,
         VertexData,
         NumIndices,
-        IndexData
+        IndexData,
+        TopType
     );
     return Meshes.Create(NewMesh);
 }
 
-MeshInstStateID GfxSystem::CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData)
+MeshInstStateID GfxSystem::CreateMeshInst(size_t VertexSize, size_t PerInstSize, size_t MaxInstCount, size_t NumVertices, void* VertexData, size_t NumIndices, u32* IndexData, D3D11_PRIMITIVE_TOPOLOGY TopType)
 {
     MeshInstStateT NewMesh = CreateMeshInstState
     (
@@ -1149,7 +1156,8 @@ MeshInstStateID GfxSystem::CreateMeshInst(size_t VertexSize, size_t PerInstSize,
         NumVertices,
         VertexData,
         NumIndices,
-        IndexData
+        IndexData,
+        TopType
     );
     return MeshesInst.Create(NewMesh);
 }

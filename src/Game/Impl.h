@@ -171,6 +171,7 @@ struct BulletManager
 
 struct DebugVisualizer
 {
+    MeshInstStateID idMeshBB = 0;
     RenderInstEntityID idInstBBs = 0;
     DArray<InstRectColorData> BoundingBoxDraws;
 
