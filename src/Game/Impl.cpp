@@ -218,6 +218,7 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
         { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
         { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
     };
+    Game->DbgVis.BoundingBoxDraws.Add({ { BoundingBox.Min, BoundingBox.Max - BoundingBox.Min }, v4f{1.0f, 1.0f, 1.0f, 1.0f} });
     if (bShouldClamp) { Vel = { 0.0f, 0.0f }; }
 
     // Update ship angle
@@ -479,6 +480,7 @@ void BossShip::Update(UBGameImpl* Game)
         Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
         LastBulletSpawn = CurrTime;
     }
+    Game->DbgVis.BoundingBoxDraws.Add({ { BoundingBox.Min, BoundingBox.Max - BoundingBox.Min }, ColorScheme::BossShip });
 }
 
 bool BulletManager::DoesCollide(PerBulletData& Bullet, AABB* BoundingBox)
@@ -519,7 +521,7 @@ void BulletManager::Init(UBGameImpl* Game)
     REInstData.Type = DrawInstType::Color;
     // Bullet mesh:
     {
-        constexpr u32 NumPoints = 8;
+        constexpr u32 NumPoints = BulletMeshResolution;
         constexpr size_t NumVerts = NumPoints + 1;
         constexpr size_t NumTris = NumPoints;
         constexpr size_t NumInds = NumTris * 3;
@@ -638,6 +640,41 @@ void BulletManager::Update(UBGameImpl* Game)
         InstRE->NumInst = BulletInstDrawData.Num;
         InstRE->pInstData = BulletInstDrawData.Data;
     }
+}
+
+void DebugVisualizer::Init(UBGameImpl* Game)
+{
+    RenderInstEntity InstData = {};
+    InstData.bVisible = true;
+    InstData.bWireframe = true;
+    InstData.World = m4f::Identity();
+    InstData.Type = DrawInstType::Color;
+    InstData.idMesh = Game->Gfx.idInstRectColor;
+    idInstBBs = Game->Gfx.CreateEntityInst(InstData);
+    ASSERT(idInstBBs);
+
+    BoundingBoxDraws.Init(MeshInstStateT::DefaultMaxInstCount);
+}
+
+void DebugVisualizer::Term(UBGameImpl* Game)
+{
+    BoundingBoxDraws.Term();
+
+    Game->Gfx.DestroyEntityInst(idInstBBs);
+}
+
+void DebugVisualizer::Update(UBGameImpl* Game)
+{
+    RenderInstEntity* pData = Game->Gfx.GetEntityInst(idInstBBs);
+    ASSERT(pData)
+
+    if (pData->bVisible && BoundingBoxDraws.Num)
+    {
+        pData->NumInst = BoundingBoxDraws.Num;
+        pData->pInstData = BoundingBoxDraws.Data;
+    }
+
+    BoundingBoxDraws.Clear();
 }
 
 void Background::Init(UBGameImpl* Game)
@@ -854,6 +891,7 @@ bool UBGameImpl::Init()
     ASSERT(bResult);
 
     BG.Init(this);
+    DbgVis.Init(this);
     BulletMgr.Init(this);
     Player.Init(this);
     Boss.Init(this);
@@ -864,6 +902,7 @@ bool UBGameImpl::Init()
 void UBGameImpl::Update()
 {
     BG.Update(this);
+    DbgVis.Update(this);
     BulletMgr.Update(this);
     Player.Update(this);
     Boss.Update(this);
@@ -877,6 +916,7 @@ void UBGameImpl::Draw()
 bool UBGameImpl::Term()
 {
     Player.Term(this);
+    DbgVis.Term(this);
     Boss.Term(this);
     BulletMgr.Term(this);
     BG.Term(this);

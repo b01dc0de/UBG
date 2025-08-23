@@ -148,8 +148,9 @@ struct PerBulletData
 struct BulletManager
 {
     static constexpr bool bDebugPrint = false;
-    static constexpr int MaxBulletsPlayer = 256;
-    static constexpr int MaxBulletsBoss = 256;
+    static constexpr u32 BulletMeshResolution = 16;
+    static constexpr s32 MaxBulletsPlayer = 256;
+    static constexpr s32 MaxBulletsBoss = 256;
     static constexpr f32 PlayerBulletSize = 5.0f;
     static constexpr f32 BossBulletSize = 10.0f;
 
@@ -163,6 +164,16 @@ struct BulletManager
     static bool DoesCollide(PerBulletData& Bullet, AABB* BoundingBox);
     static bool IsOffscreen(PerBulletData& Bullet);
     void NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel);
+    void Init(UBGameImpl* Game);
+    void Term(UBGameImpl* Game);
+    void Update(UBGameImpl* Game);
+};
+
+struct DebugVisualizer
+{
+    RenderInstEntityID idInstBBs = 0;
+    DArray<InstRectColorData> BoundingBoxDraws;
+
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);
     void Update(UBGameImpl* Game);
@@ -213,6 +224,7 @@ struct UBGameImpl
     GfxSystem Gfx;
 
     Background BG;
+    DebugVisualizer DbgVis;
     BulletManager BulletMgr;
     PlayerShip Player;
     BossShip Boss;
