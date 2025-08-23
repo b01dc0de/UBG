@@ -1048,6 +1048,25 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
             ARRAY_SIZE(QuadInds),
             QuadInds
         );
+
+        u32 QuadLinesInds[] = {
+            0, 1,
+            0, 2,
+            2, 3,
+            3, 1
+        };
+
+        idInstRectColorLines = CreateMeshInst(
+            sizeof(VxMin),
+            sizeof(InstRectColorData),
+            MeshInstStateT::DefaultMaxInstCount,
+            ARRAY_SIZE(QuadVertsUnicolor),
+            QuadVertsUnicolor,
+            ARRAY_SIZE(QuadLinesInds),
+            QuadLinesInds,
+            D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+        );
+        ASSERT(idInstRectColorLines);
     }
 
     // TODO: Why is Depth passed as -2?

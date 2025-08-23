@@ -223,6 +223,7 @@ struct GfxSystem
     MeshStateID idQuadUnicolor;
     ListID<MeshStateT> Meshes;
     MeshInstStateID idInstRectColor;
+    MeshInstStateID idInstRectColorLines;
     ListID<MeshInstStateT> MeshesInst;
 
     Camera MainCameraO;

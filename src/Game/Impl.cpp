@@ -644,51 +644,21 @@ void BulletManager::Update(UBGameImpl* Game)
 
 void DebugVisualizer::Init(UBGameImpl* Game)
 {
-    // Init BB mesh:
-    {
-        VxMin MeshVerts[] = {
-            { { 0.0f, 1.0f, +0.5f, 1.0f} },
-            { { 1.0f, 1.0f, +0.5f, 1.0f} },
-            { { 0.0f, 0.0f, +0.5f, 1.0f} },
-            { { 1.0f, 0.0f, +0.5f, 1.0f} },
-        };
-
-        u32 MeshInds[] = {
-            0, 1,
-            0, 2,
-            2, 3,
-            3, 1
-        };
-
-        idMeshBB = Game->Gfx.CreateMeshInst(
-            sizeof(VxMin),
-            sizeof(InstRectColorData),
-            MeshInstStateT::DefaultMaxInstCount,
-            ARRAY_SIZE(MeshVerts),
-            MeshVerts,
-            ARRAY_SIZE(MeshInds),
-            MeshInds,
-            D3D11_PRIMITIVE_TOPOLOGY_LINELIST
-        );
-        ASSERT(idMeshBB);
-    }
+    BoundingBoxDraws.Reserve(MeshInstStateT::DefaultMaxInstCount);
 
     RenderInstEntity InstData = {};
     InstData.bWireframe = true;
     InstData.Type = DrawInstType::Color;
-    InstData.idMesh = idMeshBB; //Game->Gfx.idInstRectColor;
+    InstData.idMesh = Game->Gfx.idInstRectColorLines;
     idInstBBs = Game->Gfx.CreateEntityInst(InstData);
     ASSERT(idInstBBs);
-
-    BoundingBoxDraws.Init(MeshInstStateT::DefaultMaxInstCount);
 }
 
 void DebugVisualizer::Term(UBGameImpl* Game)
 {
-    BoundingBoxDraws.Term();
-
     Game->Gfx.DestroyEntityInst(idInstBBs);
-    Game->Gfx.DestroyMeshInst(idMeshBB);
+
+    BoundingBoxDraws.Term();
 }
 
 void DebugVisualizer::Update(UBGameImpl* Game)
@@ -744,6 +714,8 @@ void Background::Init(UBGameImpl* Game)
 
     // Background grid:
     {
+        static constexpr bool bUseLines = true;
+
         NumCellsX = 16;
         NumCellsY = 9;
 
@@ -770,40 +742,92 @@ void Background::Init(UBGameImpl* Game)
             }
         }
 
-        size_t NumTris = NumCellsX * NumCellsY * 2;
-        size_t NumInds = NumTris * 3;
-        u32* GridMeshInds = new u32[NumInds];
-        size_t IndexWrite = 0;
-        for (size_t X = 0; X < NumCellsX; X++)
+        size_t NumInds = 0;
+        u32* GridMeshInds = nullptr;
+        if (bUseLines)
         {
-            for (size_t Y = 0; Y < NumCellsY; Y++)
+            size_t NumLines = NumCellsX * NumCellsY * 4;
+            NumInds = NumLines * 2;
+            GridMeshInds = new u32[NumInds];
+
+            size_t IndexWrite = 0;
+            for (size_t X = 0; X < NumCellsX; X++)
             {
-                u32 TopLeftIndex = (u32)(Y * NumVertsX + X);
-                u32 TopRightIndex = (u32)(TopLeftIndex + 1);
-                u32 BotLeftIndex = (u32)(TopLeftIndex + NumVertsX);
-                u32 BotRightIndex = (u32)(BotLeftIndex + 1);
+                for (size_t Y = 0; Y < NumCellsY; Y++)
+                {
+                    u32 TopLeftIndex = (u32)(Y * NumVertsX + X);
+                    u32 TopRightIndex = (u32)(TopLeftIndex + 1);
+                    u32 BotLeftIndex = (u32)(TopLeftIndex + NumVertsX);
+                    u32 BotRightIndex = (u32)(BotLeftIndex + 1);
 
-                GridMeshInds[IndexWrite + 0] = TopLeftIndex;
-                GridMeshInds[IndexWrite + 1] = BotLeftIndex;
-                GridMeshInds[IndexWrite + 2] = TopRightIndex;
-                IndexWrite += 3;
+                    GridMeshInds[IndexWrite + 0] = TopLeftIndex;
+                    GridMeshInds[IndexWrite + 1] = TopRightIndex;
 
-                GridMeshInds[IndexWrite + 0] = TopRightIndex;
-                GridMeshInds[IndexWrite + 1] = BotLeftIndex;
-                GridMeshInds[IndexWrite + 2] = BotRightIndex;
-                IndexWrite += 3;
+                    GridMeshInds[IndexWrite + 2] = TopLeftIndex;
+                    GridMeshInds[IndexWrite + 3] = BotLeftIndex;
+
+                    GridMeshInds[IndexWrite + 4] = BotLeftIndex;
+                    GridMeshInds[IndexWrite + 5] = BotRightIndex;
+
+                    GridMeshInds[IndexWrite + 6] = TopRightIndex;
+                    GridMeshInds[IndexWrite + 7] = BotRightIndex;
+
+                    IndexWrite += 8;
+                }
             }
-        }
-        ASSERT(IndexWrite == NumInds);
+            ASSERT(IndexWrite == NumInds);
 
-        idGridMesh = Game->Gfx.CreateMesh
-        (
-            sizeof(VxMin),
-            NumVerts,
-            GridMeshVerts,
-            NumInds,
-            GridMeshInds
-        );
+            idGridMesh = Game->Gfx.CreateMesh
+            (
+                sizeof(VxMin),
+                NumVerts,
+                GridMeshVerts,
+                NumInds,
+                GridMeshInds,
+                D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+            );
+            ASSERT(idGridMesh);
+        }
+        else
+        {
+            size_t NumTris = NumCellsX * NumCellsY * 2;
+            NumInds = NumTris * 3;
+            GridMeshInds = new u32[NumInds];
+
+            size_t IndexWrite = 0;
+            for (size_t X = 0; X < NumCellsX; X++)
+            {
+                for (size_t Y = 0; Y < NumCellsY; Y++)
+                {
+                    u32 TopLeftIndex = (u32)(Y * NumVertsX + X);
+                    u32 TopRightIndex = (u32)(TopLeftIndex + 1);
+                    u32 BotLeftIndex = (u32)(TopLeftIndex + NumVertsX);
+                    u32 BotRightIndex = (u32)(BotLeftIndex + 1);
+
+                    GridMeshInds[IndexWrite + 0] = TopLeftIndex;
+                    GridMeshInds[IndexWrite + 1] = BotLeftIndex;
+                    GridMeshInds[IndexWrite + 2] = TopRightIndex;
+                    IndexWrite += 3;
+
+                    GridMeshInds[IndexWrite + 0] = TopRightIndex;
+                    GridMeshInds[IndexWrite + 1] = BotLeftIndex;
+                    GridMeshInds[IndexWrite + 2] = BotRightIndex;
+                    IndexWrite += 3;
+                }
+            }
+            ASSERT(IndexWrite == NumInds);
+
+            idGridMesh = Game->Gfx.CreateMesh
+            (
+                sizeof(VxMin),
+                NumVerts,
+                GridMeshVerts,
+                NumInds,
+                GridMeshInds
+            );
+            ASSERT(idGridMesh);
+        }
+
         ASSERT(idGridMesh);
         delete[] GridMeshInds;
         RenderEntity GridMeshData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idGridMesh);
@@ -943,10 +967,10 @@ void UBGameImpl::Draw()
 
 bool UBGameImpl::Term()
 {
-    Player.Term(this);
-    DbgVis.Term(this);
     Boss.Term(this);
+    Player.Term(this);
     BulletMgr.Term(this);
+    DbgVis.Term(this);
     BG.Term(this);
 
     bool bResult = Gfx.Term();
