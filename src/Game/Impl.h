@@ -5,7 +5,7 @@ struct UBGameImpl;
 
 // ENGINE TODOS:
 // TODO: Implement a 'DefaultSpriteWorld'
-// TODO: Decide on final origin placement (middle of screen OR bottom left? (top left, even?))
+//      - Decide on final origin placement (middle of screen OR bottom left? (top left, even?))
 
 // GAME TODOS:
 // TODO: Implement a real background
@@ -114,6 +114,8 @@ struct PlayerShip
 
 struct BossShip
 {
+    enum struct AttackStyle { None, Follow, Clockwise, Random };
+
     static constexpr f32 MaxHealth = 100.0f;
 
     MeshStateID idShipMesh;
@@ -124,6 +126,10 @@ struct BossShip
     AABB BoundingBox;
     f32 Scale;
     f32 Health;
+    f32 LastBulletSpawn = 0.0f;
+    static constexpr f32 SecondsPerBullet = 0.25f;
+    static constexpr f32 BulletSpeed = 100.0f;
+    AttackStyle Style = AttackStyle::Follow;
 
     void Hit(UBGameImpl* Game);
     void Init(UBGameImpl* Game);

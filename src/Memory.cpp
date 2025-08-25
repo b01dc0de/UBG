@@ -58,8 +58,8 @@ struct MemPoolTransient
     size_t NumBlocks = 0;
     MemBlock Blocks[MaxBlocks] = {};
 
-    static constexpr bool bDebugPrint = true;
-    static constexpr bool bDebugPrintList = true;
+    static constexpr bool bDebugPrint = false;
+    static constexpr bool bDebugPrintList = false;
 
     void Insert(size_t NewIndex, MemBlock NewBlock)
     {

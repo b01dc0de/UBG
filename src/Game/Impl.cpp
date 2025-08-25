@@ -467,19 +467,48 @@ void BossShip::Term(UBGameImpl* Game)
 
 void BossShip::Update(UBGameImpl* Game)
 {
-    static f32 LastBulletSpawn = 0.0f;
-    static constexpr f32 SecondsPerBullet = 0.25f;
-    static f32 SpawnDir = 0.0f;
-    static f32 TurnSpeed = SecondsPerBullet * fPI;
-    static constexpr f32 Speed = 100.0f;
     f32 CurrTime = (f32)GlobalEngine->Clock->CurrTime;
+
     if ((CurrTime - LastBulletSpawn) > SecondsPerBullet)
     {
-        v2f Dir = { cosf(SpawnDir) * Speed, sinf(SpawnDir) * Speed };
-        SpawnDir -= TurnSpeed;
-        Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
+        switch (Style)
+        {
+            case AttackStyle::None:
+            {
+            } break;
+
+            case AttackStyle::Follow:
+            {
+                f32 PlayerAngle = atan2f(Game->Player.Pos.Y, Game->Player.Pos.X);
+                v2f Dir = { cosf(PlayerAngle) * BulletSpeed, sinf(PlayerAngle) * BulletSpeed };
+                Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
+            } break;
+
+            case AttackStyle::Clockwise:
+            {
+                static f32 SpawnDir = 0.0f;
+                static f32 TurnSpeed = SecondsPerBullet * fPI;
+                v2f Dir = { cosf(SpawnDir) * BulletSpeed, sinf(SpawnDir) * BulletSpeed };
+                SpawnDir -= TurnSpeed;
+                Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
+            } break;
+
+            case AttackStyle::Random:
+            {
+                f32 RandomAngle = GetRandomFloatNorm() * fTAU;
+                v2f Dir = { cosf(RandomAngle) * BulletSpeed, sinf(RandomAngle) * BulletSpeed };
+                Game->BulletMgr.NewBullet(Game, BulletType::Boss, v2f{ 0.0f, 0.0f }, Dir);
+            } break;
+
+            default:
+            {
+                ASSERT(false);
+            } break;
+        }
+
         LastBulletSpawn = CurrTime;
     }
+
     Game->DbgVis.BoundingBoxDraws.Add({ { BoundingBox.Min, BoundingBox.Max - BoundingBox.Min }, ColorScheme::BossShip });
 }
 
