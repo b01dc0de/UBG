@@ -1,6 +1,6 @@
 #include "UBG.h" // Includes Memory.h
 
-#define USE_NEW_MEMORY_MODEL() (0)
+#define USE_NEW_MEMORY_MODEL() (1)
 
 #if USE_NEW_MEMORY_MODEL()
 struct MemBlock
@@ -61,6 +61,9 @@ struct MemPoolTransient
     size_t NumBlocks = 0;
     MemBlock Blocks[MaxBlocks] = {};
 
+    static constexpr bool bDebugPrint = false;
+    static constexpr bool bDebugPrintList = false;
+
     void Insert(size_t NewIndex, MemBlock NewBlock)
     {
         ASSERT(NumBlocks < MaxBlocks && NewIndex <= NumBlocks);
@@ -71,6 +74,7 @@ struct MemPoolTransient
         Blocks[NewIndex] = NewBlock;
         NumBlocks++;
     }
+
     void Remove(size_t IndexToRemove)
     {
         ASSERT(Blocks && NumBlocks < MaxBlocks && IndexToRemove < NumBlocks);
@@ -89,17 +93,32 @@ struct MemPoolTransient
         NumBlocks = 1;
         Blocks[0] = { false, InSize, PoolData };
     }
+
     void Term()
     {
+        static bool bDebugPrintOnTerm = true;
+        if (bDebugPrint || bDebugPrintOnTerm)
+        {
+            Outf("[memory][debug] Terminating...\n");
+            DebugPrintList();
+        }
+
         PoolSize = 0;
         free(PoolData);
         PoolData = nullptr;
         NumBlocks = 0;
         Blocks[0] = {};
     }
+
     void* Alloc(size_t Size)
     {
         ASSERT(NumBlocks < MaxBlocks);
+
+        // NOTE: This forces blocks to be 16-bit aligned
+    #define FORCE_16BIT_ALIGNMENT() (1)
+    #if FORCE_16BIT_ALIGNMENT()
+        Size = (Size + 0xF) & ~0xF;
+    #endif FORCE_16BIT_ALIGNMENT()
 
         int NewAllocIdx = -1;
         for (size_t Idx = 0; Idx < NumBlocks; Idx++)
@@ -123,18 +142,27 @@ struct MemPoolTransient
             }
             else if (Blocks[NewAllocIdx].Size > Size)
             {
-                Blocks[NewAllocIdx].bAlloc = true;
-                Result = Blocks[NewAllocIdx].Data;
-
                 MemBlock NewFree = { false, Blocks[NewAllocIdx].Size - Size, (u8*)Blocks[NewAllocIdx].Data + Size };
                 Insert(NewAllocIdx + 1, NewFree);
+
+                Blocks[NewAllocIdx].bAlloc = true;
+                Blocks[NewAllocIdx].Size = Size;
+                Result = Blocks[NewAllocIdx].Data;
             }
             else { ASSERT(false); }
+            BytesAllocated += Size;
+        }
+
+        if (bDebugPrint)
+        {
+            Outf("[memory] Alloc'd Ptr [%d] 0x%X of size %llu (0x%X)\n", NewAllocIdx, Result, Size, Size);
+            DebugPrintList();
         }
 
         ASSERT(Result);
         return Result;
     }
+
     void Free(void* Ptr)
     {
         ASSERT(Ptr);
@@ -149,6 +177,9 @@ struct MemPoolTransient
 
         if (IndexToFree != -1)
         {
+            size_t FreedSize = Blocks[IndexToFree].Size;
+            void* FreedData = Blocks[IndexToFree].Data;
+
             bool bBeforeFree = IndexToFree ? !Blocks[IndexToFree - 1].bAlloc : false;
             bool bAfterFree = IndexToFree < (NumBlocks - 1) ? !Blocks[IndexToFree + 1].bAlloc : false;
             if (bBeforeFree && bAfterFree)
@@ -173,8 +204,30 @@ struct MemPoolTransient
             {
                 Blocks[IndexToFree].bAlloc = false;
             }
+
+            BytesAllocated -= FreedSize;
+        #if _DEBUG
+            if (bDebugPrint)
+            {
+                Outf("[memory] Free'd Ptr 0x%X of size %llu (0x%X)\n", FreedData, FreedSize, FreedSize);
+                DebugPrintList();
+            }
+        #endif // _DEBUG
         }
     }
+
+#if _DEBUG
+    void DebugPrintList()
+    {
+        Outf("[memory][debug] NumBlocks: %llu\tTotalAllocatedBytes: %llu\n", NumBlocks, BytesAllocated);
+        for (size_t Idx = 0; Idx < NumBlocks; Idx++)
+        {
+            void* DataOffset = (void*)((u8*)Blocks[Idx].Data - (u8*)PoolData);
+            Outf("[%llu] %s -> 0x%X\tSize: %llu (0x%X)\n", Idx, Blocks[Idx].bAlloc ? "ALLOC" : "FREE", DataOffset, Blocks[Idx].Size, Blocks[Idx].Size);
+        }
+        Outf("\n");
+    }
+#endif // _DEBUG
 };
 
 struct MemImpl
@@ -197,6 +250,7 @@ struct MemImpl
         *Transient = {};
         Transient->Init(TransientSize);
     }
+
     static void Term()
     {
         ASSERT(Persistent && Transient);
@@ -205,12 +259,15 @@ struct MemImpl
         Transient = nullptr;
 
         Persistent->Term();
+        free(Persistent);
         Persistent = nullptr;
     }
+
     static void* Alloc(size_t Size)
     {
         return Transient->Alloc(Size);
     }
+
     static void Free(void* Ptr)
     {
         ASSERT(Ptr);
@@ -267,7 +324,7 @@ struct MemPool
     size_t TotalFreeSize;
 
 #if _DEBUG
-    static constexpr bool bDebugPrint = false;
+    static constexpr bool bDebugPrint = true;
     size_t TotalNumAllocs;
     size_t TotalNumFrees;
     size_t MaxBytesUsed;
