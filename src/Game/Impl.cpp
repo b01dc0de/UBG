@@ -210,16 +210,50 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
     float MinY = HalfScale - HalfHeight;
     float MaxX = GlobalEngine->Width - HalfScale - HalfWidth;
     float MaxY = GlobalEngine->Height - HalfScale - HalfHeight;
-    bool bShouldClamp = (Pos.X < MinX || MaxX < Pos.X) || (Pos.Y < MinY || MaxY < Pos.Y);
+    bool bShouldClampX = (Pos.X < MinX || MaxX < Pos.X);
+    bool bShouldClampY = (Pos.Y < MinY || MaxY < Pos.Y);
+    if (bShouldClampX) { Vel.X = 0.0f; }
+    if (bShouldClampY) { Vel.Y = 0.0f; }
     Pos.X = Clamp(MinX, MaxX, Pos.X);
     Pos.Y = Clamp(MinY, MaxY, Pos.Y);
-    BoundingBox =
+
+    static constexpr bool bUseAccurateBB = true;
+    if (bUseAccurateBB)
     {
-        { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
-        { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
-    };
+        v2f Points[] = {
+            { -0.5f, +0.5f },
+            { +0.5f, +0.5f },
+            { -0.5f, -0.5f },
+            { +0.5f, -0.5f }
+        };
+
+        f32 fCos = cosf(Angle);
+        f32 fSin = sinf(Angle);
+        v2f Min = Pos;
+        v2f Max = Pos;
+
+        for (int Idx = 0; Idx < ARRAY_SIZE(Points); Idx++)
+        {
+            v2f RotPoint = {
+                (fCos * Points[Idx].X - fSin * Points[Idx].Y) * Scale + Pos.X,
+                (fSin * Points[Idx].X + fCos * Points[Idx].Y) * Scale + Pos.Y
+            };
+            if (RotPoint.X < Min.X) { Min.X = RotPoint.X; }
+            if (RotPoint.Y < Min.Y) { Min.Y = RotPoint.Y; }
+            if (RotPoint.X > Max.X) { Max.X = RotPoint.X; }
+            if (RotPoint.Y > Max.Y) { Max.Y = RotPoint.Y; }
+        }
+        BoundingBox = { Min, Max };
+    }
+    else
+    {
+        BoundingBox =
+        {
+            { Pos.X - HalfScale, Pos.Y - HalfScale }, // Min
+            { Pos.X + HalfScale, Pos.Y + HalfScale } // Max
+        };
+    }
     Game->DbgVis.BoundingBoxDraws.Add({ { BoundingBox.Min, BoundingBox.Max - BoundingBox.Min }, v4f{1.0f, 1.0f, 1.0f, 1.0f} });
-    if (bShouldClamp) { Vel = { 0.0f, 0.0f }; }
 
     // Update ship angle
     switch (AimBehavior)
@@ -389,66 +423,13 @@ void BossShip::Init(UBGameImpl* Game)
         idShipMesh = Game->Gfx.CreateMesh(sizeof(VxMin), BossNumVerts, BossVerts, BossNumInds, BossInds);
         ASSERT(idShipMesh);
     }
-    // Boss BoundingBox mesh:
-    {
-        constexpr int NumVerts = 16;
-        constexpr int NumTris = 8;
-        constexpr int NumInds = NumTris * 3;
-        VxMin BossVertsBB[NumVerts] = {};
-        constexpr f32 WidthBB = 0.25f;
-        BossVertsBB[0] = { BoundingBox.Min.X - WidthBB, BoundingBox.Max.Y, 0.5f, 1.0f };
-        BossVertsBB[1] = { BoundingBox.Min.X, BoundingBox.Max.Y, 0.5f, 1.0f };
-        BossVertsBB[2] = { BoundingBox.Min.X - WidthBB, BoundingBox.Min.Y, 0.5f, 1.0f };
-        BossVertsBB[3] = { BoundingBox.Min.X, BoundingBox.Min.Y, 0.5f, 1.0f };
-
-        BossVertsBB[4] = { BoundingBox.Max.X, BoundingBox.Max.Y, 0.5f, 1.0f };
-        BossVertsBB[5] = { BoundingBox.Max.X + WidthBB, BoundingBox.Max.Y, 0.5f, 1.0f };
-        BossVertsBB[6] = { BoundingBox.Max.X, BoundingBox.Min.Y, 0.5f, 1.0f };
-        BossVertsBB[7] = { BoundingBox.Max.X + WidthBB, BoundingBox.Min.Y, 0.5f, 1.0f };
-
-        BossVertsBB[8] = { BoundingBox.Min.X, BoundingBox.Max.Y + WidthBB, 0.5f, 1.0f };
-        BossVertsBB[9] = { BoundingBox.Max.X, BoundingBox.Max.Y + WidthBB, 0.5f, 1.0f };
-        BossVertsBB[10] = { BoundingBox.Min.X, BoundingBox.Max.Y, 0.5f, 1.0f };
-        BossVertsBB[11] = { BoundingBox.Max.X, BoundingBox.Max.Y, 0.5f, 1.0f };
-
-        BossVertsBB[12] = { BoundingBox.Min.X, BoundingBox.Min.Y, 0.5f, 1.0f };
-        BossVertsBB[13] = { BoundingBox.Max.X, BoundingBox.Min.Y, 0.5f, 1.0f };
-        BossVertsBB[14] = { BoundingBox.Min.X, BoundingBox.Min.Y - WidthBB, 0.5f, 1.0f };
-        BossVertsBB[15] = { BoundingBox.Max.X, BoundingBox.Min.Y - WidthBB, 0.5f, 1.0f };
-
-        u32 BossIndsBB[NumInds] = {
-            0, 1, 2,
-            1, 3, 2,
-
-            4, 5, 6,
-            5, 7, 6,
-
-            8, 9, 10,
-            9, 11, 10,
-
-            12, 13, 14,
-            13, 15, 14
-        };
-
-        idBoundingBoxMesh = Game->Gfx.CreateMesh
-        (
-            sizeof(VxMin),
-            ARRAY_SIZE(BossVertsBB), BossVertsBB,
-            ARRAY_SIZE(BossIndsBB), BossIndsBB
-        );
-        ASSERT(idBoundingBoxMesh);
-
-        RenderEntity BoundingBoxRenderData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0f), DrawType::Unicolor, idBoundingBoxMesh);
-        BoundingBoxRenderData.UnicolorState = { ColorScheme::BossShip };
-        idBoundingBox = Game->Gfx.CreateEntity(BoundingBoxRenderData);
-    }
 
     BoundingBox.Min.X *= Scale;
     BoundingBox.Min.Y *= Scale;
     BoundingBox.Max.X *= Scale;
     BoundingBox.Max.Y *= Scale;
     RenderEntity BossShipData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0), DrawType::Unicolor, idShipMesh);
-    BossShipData.UnicolorState.Color = v4f{ 1.0f, 0.0f, 0.0f, 1.0f };
+    BossShipData.UnicolorState.Color = ColorScheme::BossShip;
     idShip = Game->Gfx.CreateEntity(BossShipData);
     ASSERT(idShip);
 }
@@ -456,8 +437,6 @@ void BossShip::Init(UBGameImpl* Game)
 void BossShip::Term(UBGameImpl* Game)
 {
     Healthbar.Term(Game);
-    Game->Gfx.DestroyEntity(idBoundingBox);
-    Game->Gfx.DestroyMesh(idBoundingBoxMesh);
     Game->Gfx.DestroyEntity(idShip);
     Game->Gfx.DestroyMesh(idShipMesh);
 }
@@ -903,7 +882,7 @@ void Background::Update(UBGameImpl* Game)
         case ColorMode::EmulateSound:
         {
             f32 MinIntensity = 0.075f;
-            f32 MaxIntensity = MinIntensity + 0.25f;
+            f32 MaxIntensity = 0.25f;
             v4f SoundColor = {};
 
             auto GetFactor = [CurrTime](f32 BeatTime)

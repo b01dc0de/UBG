@@ -62,7 +62,7 @@ struct UBGameImpl;
 
 struct ColorScheme
 {
-    static constexpr v4f BossShip{ 1.0f, 1.0f, 0.0f, 1.0f };
+    static constexpr v4f BossShip{ 1.0f, 0.0f, 0.0f, 1.0f };
     static constexpr v4f BossBullets{ 0.9f, 0.1f, 0.1f, 1.0f };
     static constexpr v4f PlayerBullets{ 0.1f, 0.1f, 0.1f, 1.0f };
     static constexpr v4f BulletOutline{ 1.0f, 1.0f, 1.0f, 0.8f };
@@ -120,8 +120,6 @@ struct BossShip
 
     MeshStateID idShipMesh;
     RenderEntityID idShip;
-    MeshStateID idBoundingBoxMesh;
-    RenderEntityID idBoundingBox;
     VisualProgressBar Healthbar;
     AABB BoundingBox;
     f32 Scale;
@@ -216,7 +214,7 @@ struct Background
     f32 LastSwitchTime;
     f32 StepDurationSeconds;
     // ColorMode::EmulateSound state:
-    f32 BeatsPerMinute = 90.0f;
+    f32 BeatsPerMinute = 120.0f;
 
     // 3D background:
     MeshStateID idGridMesh = 0;
