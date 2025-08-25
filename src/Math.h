@@ -38,6 +38,18 @@ f32 Max(f32 A, f32 B);
 f32 Clamp(f32 Min, f32 Max, f32 C);
 */
 
+inline f32 Abs(f32 A)
+{
+    if (A < 0.0f) { return -A; }
+    return A;
+}
+
+inline f64 Abs(f64 A)
+{
+    if (A < 0.0f) { return -A; }
+    return A;
+}
+
 bool Equals(v2i A, v2i B);
 bool NotEquals(v2i A, v2i B);
 bool operator==(v2i A, v2i B);

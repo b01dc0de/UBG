@@ -205,12 +205,18 @@ struct ParticleEmitter
 
 struct Background
 {
+    enum struct ColorMode { Black, RandomDim, EmulateSound };
+    ColorMode Mode = ColorMode::EmulateSound;
+
     MeshStateID idBackgroundMesh;
     RenderEntityID idBackground;
+    // ColorMode::RandomDim state:
     v4f CurrColor;
     v4f NextColor;
     f32 LastSwitchTime;
     f32 StepDurationSeconds;
+    // ColorMode::EmulateSound state:
+    f32 BeatsPerMinute = 90.0f;
 
     // 3D background:
     MeshStateID idGridMesh = 0;

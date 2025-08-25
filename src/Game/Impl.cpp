@@ -239,10 +239,7 @@ void PlayerShip::HandleInput(UBGameImpl* Game)
                     Angle = atan2f(Diff.Y, Diff.X);
                 }
             }
-            else
-            {
-                // Keep angle the same
-            }
+            else { } // Keep angle the same
         } break;
 
         case AimControls::Keys:
@@ -881,6 +878,64 @@ void Background::Update(UBGameImpl* Game)
 {
     RenderEntity* RE = Game->Gfx.GetEntity(idBackground);
     ASSERT(RE);
+
+    float CurrTime = (float)GlobalEngine->Clock->CurrTime;
+
+    switch (Mode)
+    {
+        case ColorMode::Black:
+        {
+            RE->UnicolorState = { v4f{0.0f, 0.0f, 0.0f, 1.0f } };
+        } break;
+
+        case ColorMode::RandomDim:
+        {
+            if (CurrTime - LastSwitchTime > StepDurationSeconds)
+            {
+                LastSwitchTime = CurrTime;
+                CurrColor = NextColor;
+                NextColor = GetRandomColorDim();
+            }
+            float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
+            RE->UnicolorState = { Lerp(CurrColor, NextColor, Factor) };
+        } break;
+
+        case ColorMode::EmulateSound:
+        {
+            f32 MinIntensity = 0.075f;
+            f32 MaxIntensity = MinIntensity + 0.25f;
+            v4f SoundColor = {};
+
+            auto GetFactor = [CurrTime](f32 BeatTime)
+            {
+                f32 Resolution = BeatTime / 10.0f;
+                f32 BeatFactor = fmodf(CurrTime, BeatTime);
+                f32 Dist = Min(BeatFactor, BeatTime - BeatFactor);
+
+                f32 Result = 0.0f;
+                if (Dist < Resolution)
+                {
+                    Result = (Resolution - Dist) / Resolution;
+                }
+                return Result;
+            };
+
+            f32 BaseBeatTime = 60.0f / BeatsPerMinute;
+
+            f32 RedFactor = Lerp(MinIntensity, MaxIntensity, GetFactor(BaseBeatTime));
+            f32 GreenFactor = Lerp(MinIntensity, MaxIntensity, GetFactor(BaseBeatTime * 2.0f));
+            f32 BlueFactor = Lerp(MinIntensity, MaxIntensity, GetFactor(BaseBeatTime * 4.0f));
+
+            SoundColor = { RedFactor, GreenFactor, BlueFactor, 1.0f };
+
+            RE->UnicolorState = { SoundColor };
+        } break;
+
+        default:
+        {
+            ASSERT(false);
+        } break;
+    }
     /*
     { // Set cycle between predefined colors:
         constexpr v4f Colors[] = {
@@ -899,16 +954,6 @@ void Background::Update(UBGameImpl* Game)
         RE->UnicolorState = { Lerp(Colors[StepNumber], Colors[(StepNumber + 1) % NumColors], Factor) };
     }
     */
-
-    float CurrTime = (float)GlobalEngine->Clock->CurrTime;
-    if (CurrTime - LastSwitchTime > StepDurationSeconds)
-    {
-        LastSwitchTime = CurrTime;
-        CurrColor = NextColor;
-        NextColor = GetRandomColorDim();
-    }
-    float Factor = (CurrTime - LastSwitchTime) / StepDurationSeconds;
-    RE->UnicolorState = { Lerp(CurrColor, NextColor, Factor) };
 
     constexpr bool bUpdateGrid = true;
     if (bUpdateGrid)
