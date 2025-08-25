@@ -11,7 +11,6 @@ struct Memory
 
 void* operator new(size_t Size);
 void* operator new[](size_t Size);
-
 void operator delete(void* Ptr) noexcept;
 void operator delete[](void* Ptr) noexcept;
 
