@@ -30,6 +30,7 @@ struct UBG_Engine
     struct InputT* Input;
 
     void GameLoop();
+    void Draw();
     bool Init();
     bool Term();
 };

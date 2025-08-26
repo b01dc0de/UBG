@@ -60,6 +60,18 @@ struct UBGameImpl;
                 - Wireframe / etc.
 */
 
+enum struct DrawStage : u8
+{
+    BG_PURE,
+    BG_REAL,
+    PARTICLES_BG,
+    MAIN_GAMEPLAY,
+    PARTICLES_FG,
+    DEBUG,
+    UI,
+    Count
+};
+
 struct ColorScheme
 {
     static constexpr v4f BossShip{ 1.0f, 0.0f, 0.0f, 1.0f };

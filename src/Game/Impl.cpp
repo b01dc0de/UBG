@@ -17,6 +17,7 @@ void VisualProgressBar::Init(UBGameImpl* Game, f32 _Progress, v4f _Color, v2f _P
         DrawType::Unicolor,
         Game->Gfx.idQuadUnicolor
     );
+    RenderData.StageIndex = (u8)DrawStage::UI;
 
     RenderData.UnicolorState = { v4f{ 0.75f, 0.75f, 0.75f, 1.0f } };
     idBG = Game->Gfx.CreateEntity(RenderData);
@@ -86,6 +87,7 @@ void PlayerShip::Init(UBGameImpl* Game)
     Healthbar.Init(Game, Health / MaxHealth, HealthbarColor, HealthbarPos, HealthbarSize);
 
     RenderEntity PlayerShipData = {};
+    PlayerShipData.StageIndex = (u8)DrawStage::MAIN_GAMEPLAY;
     if (bUseShipMesh)
     {
         constexpr size_t NumVerts = 15;
@@ -430,6 +432,7 @@ void BossShip::Init(UBGameImpl* Game)
     BoundingBox.Max.Y *= Scale;
     RenderEntity BossShipData = RenderEntity::Default(m4f::Scale(Scale, Scale, 1.0), DrawType::Unicolor, idShipMesh);
     BossShipData.UnicolorState.Color = ColorScheme::BossShip;
+    BossShipData.StageIndex = (u8)DrawStage::MAIN_GAMEPLAY;
     idShip = Game->Gfx.CreateEntity(BossShipData);
     ASSERT(idShip);
 }
@@ -523,6 +526,7 @@ void BulletManager::Init(UBGameImpl* Game)
     BulletInstDrawData.Reserve(MeshInstStateT::DefaultMaxInstCount);
 
     RenderInstEntity REInstData = {};
+    REInstData.StageIndex = (u8)DrawStage::MAIN_GAMEPLAY;
     REInstData.Type = DrawInstType::Color;
     // Bullet mesh:
     {
@@ -653,6 +657,7 @@ void DebugVisualizer::Init(UBGameImpl* Game)
 
     RenderInstEntity InstData = {};
     InstData.bWireframe = true;
+    InstData.StageIndex = (u8)DrawStage::DEBUG;
     InstData.Type = DrawInstType::Color;
     InstData.idMesh = Game->Gfx.idInstRectColorLines;
     idInstBBs = Game->Gfx.CreateEntityInst(InstData);
@@ -712,6 +717,7 @@ void Background::Init(UBGameImpl* Game)
         ASSERT(idBackgroundMesh);
 
         RenderEntity BackgroundRenderData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idBackgroundMesh);
+        BackgroundRenderData.StageIndex = (u8)DrawStage::BG_PURE;
         BackgroundRenderData.UnicolorState = { { 0.0f, 0.0f, 0.0f, 1.0f } };
         idBackground = Game->Gfx.CreateEntity(BackgroundRenderData);
         ASSERT(idBackground);
@@ -837,6 +843,7 @@ void Background::Init(UBGameImpl* Game)
         delete[] GridMeshInds;
         RenderEntity GridMeshData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idGridMesh);
         GridMeshData.bWireframe = true;
+        GridMeshData.StageIndex = (u8)DrawStage::BG_REAL;
         GridMeshData.World = m4f::Trans(0.0f, 0.0f, +0.75f);
         GridMeshData.UnicolorState = { ColorScheme::BackgroundGrid };
         idGrid = Game->Gfx.CreateEntity(GridMeshData);
@@ -1015,7 +1022,7 @@ void UBGameImpl::Update()
 
 void UBGameImpl::Draw()
 {
-    Gfx.Entities.DrawAll(&Gfx);
+    Gfx.Draw();
 }
 
 bool UBGameImpl::Term()

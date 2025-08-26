@@ -10,6 +10,14 @@ void UBG_Engine::GameLoop()
     GfxState->Draw();
 }
 
+void UBG_Engine::Draw()
+{
+    if (Instance)
+    {
+        Instance->Draw();
+    }
+}
+
 bool UBG_Engine::Init()
 {
     Memory::Init();

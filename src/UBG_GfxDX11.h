@@ -143,6 +143,7 @@ struct RenderEntity
 {
     bool bVisible = true;
     bool bWireframe = false;
+    u8 StageIndex = 0;
     m4f World = m4f::Identity();
     DrawType Type = DrawType::Count;
     MeshStateID idMesh = 0;
@@ -169,6 +170,7 @@ struct RenderInstEntity
 {
     bool bVisible = true;
     bool bWireframe = false;
+    u8 StageIndex = 0;
     m4f World = m4f::Identity();
     DrawInstType Type = DrawInstType::Count;
     MeshInstStateID idMesh = 0;
@@ -228,6 +230,7 @@ struct GfxSystem
 
     Camera MainCameraO;
 
+    void Draw();
     bool Init(UBG_GfxT* _GfxBackend);
     bool Term();
 

@@ -264,20 +264,81 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
     ASSERT(pViewProjBuffer);
     Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
 
-    // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
-    for (size_t Idx = 0; Idx < Entities.NumActive; Idx++)
+    static constexpr bool bEnforceDrawOrder = true;
+    if (bEnforceDrawOrder)
     {
-        if (Entities.ActiveList[Idx].bVisible)
+        struct StageIDPair
         {
-            Entities.ActiveList[Idx].Draw(System);
+            u8 StageIndex;
+            TypeID ID;
+        };
+
+        DArray<StageIDPair> StageIDs_Entities(Entities.NumActive);
+        DArray<StageIDPair> StageIDs_EntitiesInst(EntitiesInst.NumActive);
+        u8 MinStage = 0xFF;
+        u8 MaxStage = 0x00;
+
+        for (size_t EIdx = 0; EIdx < Entities.NumActive; EIdx++)
+        {
+            RenderEntity* Curr = &Entities.ActiveList[EIdx];
+            ASSERT(Curr);
+            StageIDs_Entities.Add({ Curr->StageIndex, Entities.IndexToIDMap[EIdx] + 1 });
+            if (Curr->StageIndex < MinStage) { MinStage = Curr->StageIndex; }
+            if (Curr->StageIndex > MaxStage) { MaxStage = Curr->StageIndex; }
+        }
+
+        for (size_t EIdx = 0; EIdx < EntitiesInst.NumActive; EIdx++)
+        {
+            RenderInstEntity* Curr = &EntitiesInst.ActiveList[EIdx];
+            ASSERT(Curr);
+            StageIDs_EntitiesInst.Add({ Curr->StageIndex, EntitiesInst.IndexToIDMap[EIdx] + 1 });
+            if (Curr->StageIndex < MinStage) { MinStage = Curr->StageIndex; }
+            if (Curr->StageIndex > MaxStage) { MaxStage = Curr->StageIndex; }
+        }
+
+        for (size_t StageIndex = MinStage; StageIndex <= MaxStage; StageIndex++)
+        {
+            for (size_t EIdx = 0; EIdx < StageIDs_Entities.Num; EIdx++)
+            {
+                StageIDPair& Curr = StageIDs_Entities[EIdx];
+                ASSERT(Curr.StageIndex >= StageIndex);
+                if (Curr.StageIndex == StageIndex)
+                {
+                    RenderEntity* RE = Entities.Get(Curr.ID);
+                    if (RE && RE->bVisible) { RE->Draw(System); }
+                    StageIDs_Entities.Remove(EIdx--);
+                }
+            }
+            for (size_t EIdx = 0; EIdx < StageIDs_EntitiesInst.Num; EIdx++)
+            {
+                StageIDPair& Curr = StageIDs_EntitiesInst[EIdx];
+                ASSERT(Curr.StageIndex >= StageIndex);
+                if (Curr.StageIndex == StageIndex)
+                {
+                    RenderInstEntity* RIE = EntitiesInst.Get(Curr.ID);
+                    if (RIE && RIE->bVisible) { RIE->Draw(System); }
+                    StageIDs_EntitiesInst.Remove(EIdx--);
+                }
+            }
         }
     }
-
-    for (size_t Idx = 0; Idx < EntitiesInst.NumActive; Idx++)
+    else
     {
-        if (EntitiesInst.ActiveList[Idx].bVisible)
+        // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
+        for (size_t Idx = 0; Idx < Entities.NumActive; Idx++)
         {
-            EntitiesInst.ActiveList[Idx].Draw(System);
+            if (Entities.ActiveList[Idx].bVisible)
+            {
+                Entities.ActiveList[Idx].Draw(System);
+            }
+        }
+
+        for (size_t Idx = 0; Idx < EntitiesInst.NumActive; Idx++)
+        {
+            if (EntitiesInst.ActiveList[Idx].bVisible)
+            {
+                EntitiesInst.ActiveList[Idx].Draw(System);
+            }
         }
     }
 }
@@ -447,7 +508,7 @@ void UBG_Gfx_DX11::DrawEnd()
 void UBG_Gfx_DX11::Draw()
 {
     DrawBegin();
-    GlobalEngine->Instance->Draw();
+    GlobalEngine->Draw();
     DrawEnd();
 }
 
@@ -814,6 +875,11 @@ MeshInstStateT CreateMeshInstState
     }
 
     return Result;
+}
+
+void GfxSystem::Draw()
+{
+    Entities.DrawAll(this);
 }
 
 bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
