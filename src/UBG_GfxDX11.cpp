@@ -267,6 +267,11 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
     static constexpr bool bEnforceDrawOrder = true;
     if (bEnforceDrawOrder)
     {
+        // TODO: Currently this is very messy. Ideally we would like to:
+        //  - Have additional info for each DrawStage
+        //      - Camera info
+        //      - Blend/Alpha info
+        //      - Stencil info(?)
         struct StageIDPair
         {
             u8 StageIndex;

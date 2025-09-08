@@ -24,6 +24,7 @@ struct Camera
     m4f Proj;
 
     void Ortho(float ResX, float ResY, float fDepth);
+    void Perspective(v3f _Pos, v3f _LookAt);
 };
 
 #endif // UBG_GFXCOMMON_H
