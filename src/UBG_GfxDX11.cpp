@@ -272,11 +272,13 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
         //      - Camera info
         //      - Blend/Alpha info
         //      - Stencil info(?)
+
         struct StageIDPair
         {
             u8 StageIndex;
             TypeID ID;
         };
+        // TODO: We also would like to not have to build these lists each frame
 
         DArray<StageIDPair> StageIDs_Entities(Entities.NumActive);
         DArray<StageIDPair> StageIDs_EntitiesInst(EntitiesInst.NumActive);

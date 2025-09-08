@@ -156,7 +156,7 @@ enum struct BulletType
 
 struct PerBulletData
 {
-    BulletType Type;
+    //BulletType Type;
     v2f Pos;
     v2f Vel;
 };
@@ -172,12 +172,12 @@ struct BulletManager
 
     MeshInstStateID idInstBulletMesh = 0;
     RenderInstEntityID idInstBullets = 0;
-    DArray<InstRectColorData> BulletInstDrawData;
+    DArray<InstRectColorData> BulletDraws;
     int NumBulletsPlayer = 0;
     int NumBulletsBoss = 0;
-    DArray<PerBulletData> ActiveBullets;
+    DArray<PerBulletData> ActivePlayerBullets;
+    DArray<PerBulletData> ActiveBossBullets;
 
-    static bool DoesCollide(PerBulletData& Bullet, AABB* BoundingBox);
     static bool IsOffscreen(PerBulletData& Bullet);
     void NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Vel);
     void Init(UBGameImpl* Game);

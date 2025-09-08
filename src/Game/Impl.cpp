@@ -491,12 +491,6 @@ void BossShip::Update(UBGameImpl* Game)
     Game->DbgVis.BoundingBoxDraws.Add({ { BoundingBox.Min, BoundingBox.Max - BoundingBox.Min }, ColorScheme::BossShip });
 }
 
-bool BulletManager::DoesCollide(PerBulletData& Bullet, AABB* BoundingBox)
-{
-    SphereBB BulletBB = { Bullet.Pos, Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize };
-    return Collision::Check(BoundingBox, &BulletBB);
-}
-
 bool BulletManager::IsOffscreen(PerBulletData& Bullet)
 {
     float HalfWidth = GlobalEngine->Width * 0.5f;
@@ -510,20 +504,23 @@ void BulletManager::NewBullet(UBGameImpl* Game, BulletType Type, v2f Pos, v2f Ve
     UNUSED_VAR(Game);
 
     // TODO: Do we care about enforcing a strict limit on NumBullets?
-    if ((Type == BulletType::Player && NumBulletsPlayer < MaxBulletsPlayer) ||
-        (Type == BulletType::Boss && NumBulletsBoss < MaxBulletsBoss))
+    if (Type == BulletType::Player && NumBulletsPlayer < MaxBulletsPlayer)
     {
-        PerBulletData NewBullet = { Type, Pos, Vel };
-        ActiveBullets.Add(NewBullet);
-
-        if (Type == BulletType::Player) { NumBulletsPlayer++; }
-        else { NumBulletsBoss++; }
+        PerBulletData NewBullet = { /*Type,*/ Pos, Vel};
+        ActivePlayerBullets.Add(NewBullet);
+    }
+    else if (Type == BulletType::Boss && NumBulletsBoss < MaxBulletsBoss)
+    {
+        PerBulletData NewBullet = { /*Type,*/ Pos, Vel};
+        ActiveBossBullets.Add(NewBullet);
     }
 }
 
 void BulletManager::Init(UBGameImpl* Game)
 {
-    BulletInstDrawData.Reserve(MeshInstStateT::DefaultMaxInstCount);
+    BulletDraws.Reserve(MeshInstStateT::DefaultMaxInstCount);
+    ActivePlayerBullets.Reserve(MaxBulletsPlayer);
+    ActiveBossBullets.Reserve(MaxBulletsBoss);
 
     RenderInstEntity REInstData = {};
     REInstData.StageIndex = (u8)DrawStage::MAIN_GAMEPLAY;
@@ -572,40 +569,28 @@ void BulletManager::Term(UBGameImpl* Game)
     ASSERT(idInstBulletMesh);
     Game->Gfx.DestroyMeshInst(idInstBulletMesh);
     Game->Gfx.DestroyEntityInst(idInstBullets);
-    ActiveBullets.Term();
+    ActivePlayerBullets.Term();
+    ActiveBossBullets.Term();
 }
 
 void BulletManager::Update(UBGameImpl* Game)
 {
-    BulletInstDrawData.Clear();
-    for (size_t Idx = 0; Idx < ActiveBullets.Num; Idx++)
+    BulletDraws.Clear();
+    for (size_t Idx = 0; Idx < ActivePlayerBullets.Num; Idx++)
     {
-        PerBulletData& Bullet = ActiveBullets[Idx];
+        PerBulletData& Bullet = ActivePlayerBullets[Idx];
         f32 dt = (f32)GlobalEngine->Clock->LastFrameDuration;
         v2f AdjVel = { Bullet.Vel.X * dt, Bullet.Vel.Y * dt };
         Bullet.Pos = Bullet.Pos + AdjVel;
 
-        bool bHitsPlayer = Bullet.Type == BulletType::Player ? false : DoesCollide(Bullet, &Game->Player.BoundingBox);
-        bool bHitsBoss = Bullet.Type == BulletType::Boss ? false : DoesCollide(Bullet, &Game->Boss.BoundingBox);
-        if (bHitsPlayer || bHitsBoss)
+        SphereBB BulletBB = { Bullet.Pos, PlayerBulletSize};
+        bool bHitsBoss = Collision::Check(&Game->Boss.BoundingBox, &BulletBB);
+        if (bHitsBoss)
         {
-            if (bHitsPlayer)
-            {
-                bool bDebugRedo = DoesCollide(Bullet, &Game->Player.BoundingBox);
-                (void)bDebugRedo;
-                ASSERT(Bullet.Type == BulletType::Boss);
-                Game->Player.Hit(Game);
-                NumBulletsBoss--;
-            }
-            else if (bHitsBoss)
-            {
-                bool bDebugRedo = DoesCollide(Bullet, &Game->Boss.BoundingBox);
-                (void)bDebugRedo;
-                ASSERT(Bullet.Type == BulletType::Player);
-                Game->Boss.Hit(Game);
-                NumBulletsPlayer--;
-            }
-            ActiveBullets.Remove(Idx);
+            //ASSERT(Bullet.Type == BulletType::Player);
+            Game->Boss.Hit(Game);
+            NumBulletsPlayer--;
+            ActivePlayerBullets.Remove(Idx);
             Idx--;
         }
         else if (IsOffscreen(Bullet))
@@ -613,41 +598,85 @@ void BulletManager::Update(UBGameImpl* Game)
             if (bDebugPrint)
             {
                 Outf("[debug][BulletManager]: Despawned offscreen bullet\n");
-                Outf("\tType: %s\n", Bullet.Type == BulletType::Player ? "Player" : "Boss");
-                Outf("\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
+                Outf("\tType: Player\n\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
                 Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
             }
-            if (Bullet.Type == BulletType::Player) { NumBulletsPlayer--; }
-            else { NumBulletsBoss--; }
-            ActiveBullets.Remove(Idx);
+            ActivePlayerBullets.Remove(Idx);
             Idx--;
         }
         else
         {
             static constexpr bool bDrawBulletOutline = true;
-            float Scale = Bullet.Type == BulletType::Player ? PlayerBulletSize : BossBulletSize;
-            v4f Color = Bullet.Type == BulletType::Player ? ColorScheme::PlayerBullets : ColorScheme::BossBullets;
+            float Scale = PlayerBulletSize;
+            v4f Color = ColorScheme::PlayerBullets;
             InstRectColorData BulletDrawData = {};
             BulletDrawData.Rect = { Bullet.Pos, v2f{Scale, Scale} };
             BulletDrawData.Color = Color;
-            BulletInstDrawData.Add(BulletDrawData);
+            BulletDraws.Add(BulletDrawData);
             if (bDrawBulletOutline)
             {
                 float fOutlineSize = Scale * 0.2f;
                 BulletDrawData.Rect = { Bullet.Pos, v2f{Scale + fOutlineSize, Scale + fOutlineSize} };
                 BulletDrawData.Color = ColorScheme::BulletOutline;
-                BulletInstDrawData.Add(BulletDrawData);
+                BulletDraws.Add(BulletDrawData);
+            }
+        }
+    }
+
+    for (size_t Idx = 0; Idx < ActiveBossBullets.Num; Idx++)
+    {
+        PerBulletData& Bullet = ActiveBossBullets[Idx];
+        f32 dt = (f32)GlobalEngine->Clock->LastFrameDuration;
+        v2f AdjVel = { Bullet.Vel.X * dt, Bullet.Vel.Y * dt };
+        Bullet.Pos = Bullet.Pos + AdjVel;
+
+        SphereBB BulletBB = { Bullet.Pos, BossBulletSize };
+        bool bHitsPlayer = Collision::Check(&Game->Player.BoundingBox, &BulletBB);
+        if (bHitsPlayer)
+        {
+            //ASSERT(Bullet.Type == BulletType::Boss);
+            Game->Player.Hit(Game);
+            NumBulletsBoss--;
+            ActiveBossBullets.Remove(Idx);
+            Idx--;
+        }
+        else if (IsOffscreen(Bullet))
+        {
+            if (bDebugPrint)
+            {
+                Outf("[debug][BulletManager]: Despawned offscreen bullet\n");
+                Outf("\tType: Boss\n\tPos: <%0.2f, %0.2f>\n", Bullet.Pos.X, Bullet.Pos.Y);
+                Outf("\tDir: <%0.2f, %0.2f>\n", Bullet.Vel.X, Bullet.Vel.Y);
+            }
+            ActiveBossBullets.Remove(Idx);
+            Idx--;
+        }
+        else
+        {
+            static constexpr bool bDrawBulletOutline = true;
+            float Scale = BossBulletSize;
+            v4f Color = ColorScheme::BossBullets;
+            InstRectColorData BulletDrawData = {};
+            BulletDrawData.Rect = { Bullet.Pos, v2f{Scale, Scale} };
+            BulletDrawData.Color = Color;
+            BulletDraws.Add(BulletDrawData);
+            if (bDrawBulletOutline)
+            {
+                float fOutlineSize = Scale * 0.2f;
+                BulletDrawData.Rect = { Bullet.Pos, v2f{Scale + fOutlineSize, Scale + fOutlineSize} };
+                BulletDrawData.Color = ColorScheme::BulletOutline;
+                BulletDraws.Add(BulletDrawData);
             }
         }
     }
 
     // NOTE: For _safety reasons_ right now: we require explicitly setting idInst's array num / array data every frame
-    if (BulletInstDrawData.Num)
+    if (BulletDraws.Num)
     {
         RenderInstEntity* InstRE = Game->Gfx.GetEntityInst(idInstBullets);
         ASSERT(InstRE);
-        InstRE->NumInst = BulletInstDrawData.Num;
-        InstRE->pInstData = BulletInstDrawData.Data;
+        InstRE->NumInst = BulletDraws.Num;
+        InstRE->pInstData = BulletDraws.Data;
     }
 }
 
