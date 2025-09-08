@@ -63,7 +63,8 @@ struct UBGameImpl;
 enum struct DrawStage : u8
 {
     BG_PURE,
-    BG_REAL,
+    BG_REAL_2D,
+    BG_REAL_3D,
     PARTICLES_BG,
     MAIN_GAMEPLAY,
     PARTICLES_FG,
@@ -79,6 +80,7 @@ struct ColorScheme
     static constexpr v4f PlayerBullets{ 0.1f, 0.1f, 0.1f, 1.0f };
     static constexpr v4f BulletOutline{ 1.0f, 1.0f, 1.0f, 0.8f };
     static constexpr v4f BackgroundGrid{57.0f / 255.0f, 66.0f / 255.0f, 69.0f / 255.0f, 1.0f};
+    static constexpr v4f WireframeSphere{ 43.0f / 255.0f, 124.0f / 255.0f, 109.0f / 255.0f, 1.0f };
 };
 
 struct VisualProgressBar
@@ -235,6 +237,13 @@ struct Background
     size_t NumCellsY = 0;
     size_t NumVerts = 0;
     VxMin* GridMeshVerts = nullptr;
+
+    // 3D Wireframe sphere:
+    MeshStateID idSphereMesh = 0;
+    RenderEntityID idSphere = 0;
+    f32 SphereRotX = 0.0f;
+    f32 SphereRotY = 0.0f;
+    f32 SphereScale = 4.0f;
 
     void Init(UBGameImpl* Game);
     void Term(UBGameImpl* Game);

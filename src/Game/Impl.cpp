@@ -872,11 +872,116 @@ void Background::Init(UBGameImpl* Game)
         delete[] GridMeshInds;
         RenderEntity GridMeshData = RenderEntity::Default(m4f::Identity(), DrawType::Unicolor, idGridMesh);
         GridMeshData.bWireframe = true;
-        GridMeshData.StageIndex = (u8)DrawStage::BG_REAL;
+        GridMeshData.StageIndex = (u8)DrawStage::BG_REAL_2D;
         GridMeshData.World = m4f::Trans(0.0f, 0.0f, +0.75f);
         GridMeshData.UnicolorState = { ColorScheme::BackgroundGrid };
         idGrid = Game->Gfx.CreateEntity(GridMeshData);
         ASSERT(idGrid);
+    }
+
+    // Wireframe sphere:
+    {
+        size_t NumStrips = 16;
+
+        size_t SphereNumVerts = 2 + (NumStrips * NumStrips);
+        size_t SphereNumTris = (NumStrips * (NumStrips - 1) * 2) + NumStrips * 2;
+        size_t SphereNumInds = SphereNumTris * 3;
+
+        VxMin* SphereVerts = new VxMin[SphereNumVerts];
+        u32* SphereInds = new u32[SphereNumInds];
+
+        static constexpr unsigned int NorthPoleVx = 0;
+        static constexpr unsigned int SouthPoleVx = 1;
+        SphereVerts[NorthPoleVx] = { {0.0f, +1.0f, 0.0f, 1.0f} };
+        SphereVerts[SouthPoleVx] = { {0.0f, -1.0f, 0.0f, 1.0f} };
+
+        // Init sphere vertices
+        size_t VxIdx = SouthPoleVx + 1;
+        for (size_t ParallelIdx = 0; ParallelIdx < NumStrips; ParallelIdx++)
+        {
+            float LatAngle = fPI * (0.5f - (float)(ParallelIdx + 1) / (NumStrips + 1));
+            float Y = sinf(LatAngle);
+            float WidthAtLat = cosf(LatAngle);
+            for (int StripIdx = 0; StripIdx < NumStrips; StripIdx++)
+            {
+                float Angle = (float)StripIdx / NumStrips * fTAU;
+                float X = cosf(Angle) * WidthAtLat;
+                float Z = sinf(-Angle) * WidthAtLat;
+                SphereVerts[VxIdx++] = { {X, Y, Z, 1.0f} };
+            }
+        }
+
+        size_t IxIdx = 0;
+        size_t FirstParallelVx = 2;
+        size_t BottomParallelVx = FirstParallelVx + NumStrips * (NumStrips - 1);
+        // Setup top and bottom rows of triangles (north and south poles)
+        for (size_t StripIdx = 0; StripIdx < NumStrips; StripIdx++)
+        {
+            SphereInds[IxIdx + 0] = NorthPoleVx;
+            SphereInds[IxIdx + 1] = (u32)(FirstParallelVx + StripIdx);
+            if (StripIdx == NumStrips - 1)
+            {
+                SphereInds[IxIdx + 2] = (u32)FirstParallelVx;
+            }
+            else
+            {
+                SphereInds[IxIdx + 2] = (u32)(FirstParallelVx + StripIdx + 1);
+            }
+            IxIdx += 3;
+
+            SphereInds[IxIdx + 0] = (u32)SouthPoleVx;
+            if (StripIdx == NumStrips - 1)
+            {
+                SphereInds[IxIdx + 1] = (u32)BottomParallelVx;
+            }
+            else
+            {
+                SphereInds[IxIdx + 1] = (u32)(BottomParallelVx + StripIdx + 1);
+            }
+            SphereInds[IxIdx + 2] = (u32)(BottomParallelVx + StripIdx);
+            IxIdx += 3;
+        }
+
+        // Setup middle rows of triangles
+        for (int ParallelIdx = 0; ParallelIdx < (NumStrips - 1); ParallelIdx++)
+        {
+            u32 TopBeginVx = (u32)(FirstParallelVx + (ParallelIdx * NumStrips));
+            u32 BotBeginVx = (u32)(FirstParallelVx + (ParallelIdx + 1) * NumStrips);
+            for (u32 StripIdx = 0; StripIdx < NumStrips; StripIdx++)
+            {
+                u32 TopLeftVx = TopBeginVx + StripIdx;
+                u32 TopRightVx = TopLeftVx + 1;
+                u32 BotLeftVx = BotBeginVx + StripIdx;
+                u32 BotRightVx = BotLeftVx + 1;
+                if (StripIdx == NumStrips - 1)
+                {
+                    TopRightVx = TopBeginVx;
+                    BotRightVx = BotBeginVx;
+                }
+
+                SphereInds[IxIdx + 0] = TopLeftVx;
+                SphereInds[IxIdx + 1] = BotLeftVx;
+                SphereInds[IxIdx + 2] = TopRightVx;
+                IxIdx += 3;
+
+                SphereInds[IxIdx + 0] = TopRightVx;
+                SphereInds[IxIdx + 1] = BotLeftVx;
+                SphereInds[IxIdx + 2] = BotRightVx;
+                IxIdx += 3;
+            }
+        }
+
+        idSphereMesh = Game->Gfx.CreateMesh(sizeof(VxMin), SphereNumVerts, SphereVerts, SphereNumInds, SphereInds);
+        RenderEntity Sphere = RenderEntity::Default(m4f::Scale(SphereScale, SphereScale, SphereScale), DrawType::Unicolor, idSphereMesh);
+        Sphere.bWireframe = true;
+        Sphere.StageIndex = (u8)DrawStage::BG_REAL_3D;
+        Sphere.UnicolorState = { ColorScheme::WireframeSphere };
+        idSphere = Game->Gfx.CreateEntity(Sphere);
+        ASSERT(idSphereMesh);
+        ASSERT(idSphere);
+
+        delete[] SphereVerts;
+        delete[] SphereInds;
     }
 }
 
@@ -1023,6 +1128,17 @@ void Background::Update(UBGameImpl* Game)
                 GridMeshVerts, (u32)(sizeof(VxMin) * NumVerts), 0
             );
         }
+    }
+
+    // Update 3D Sphere
+    {
+        f32 DeltaTime = (f32)GlobalEngine->Clock->LastFrameDuration;
+        SphereRotX += 1.0f * DeltaTime;
+        SphereRotY += 2.0f * DeltaTime;
+
+        RenderEntity* SphereData = Game->Gfx.GetEntity(idSphere);
+        ASSERT(SphereData);
+        SphereData->World = m4f::RotX(SphereRotX) * m4f::RotY(SphereRotY) * m4f::Scale(SphereScale, SphereScale, SphereScale);
     }
 }
 

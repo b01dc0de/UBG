@@ -259,10 +259,6 @@ void RenderEntitySystem::DestroyInst(RenderInstEntityID ID)
 void RenderEntitySystem::DrawAll(GfxSystem* System)
 {
     ASSERT(System && System->Backend && System->Backend->Context);
-    UBG_GfxContextT* Context = System->Backend->Context;
-    ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
-    ASSERT(pViewProjBuffer);
-    Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
 
     static constexpr bool bEnforceDrawOrder = true;
     if (bEnforceDrawOrder)
@@ -305,6 +301,23 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
 
         for (size_t StageIndex = MinStage; StageIndex <= MaxStage; StageIndex++)
         {
+            // TODO: This is a bad hack right now, this number should be pulled directly from something that
+            //       Has specific knowledge of DrawStage info (Camera, etc.)
+            if (StageIndex == 2U)
+            {
+                UBG_GfxContextT* Context = System->Backend->Context;
+                ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
+                ASSERT(pViewProjBuffer);
+                Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraP, (u32)sizeof(System->MainCameraP), 0);
+            }
+            else
+            {
+                UBG_GfxContextT* Context = System->Backend->Context;
+                ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
+                ASSERT(pViewProjBuffer);
+                Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
+            }
+
             for (size_t EIdx = 0; EIdx < StageIDs_Entities.Num; EIdx++)
             {
                 StageIDPair& Curr = StageIDs_Entities[EIdx];
@@ -331,6 +344,11 @@ void RenderEntitySystem::DrawAll(GfxSystem* System)
     }
     else
     {
+
+    UBG_GfxContextT* Context = System->Backend->Context;
+    ShaderBufferT* pViewProjBuffer = System->ShaderBuffers.Get(System->idViewProjBuffer);
+    ASSERT(pViewProjBuffer);
+    Context->UpdateSubresource(*pViewProjBuffer, 0, nullptr, &System->MainCameraO, (u32)sizeof(System->MainCameraO), 0);
         // TODO: We eventually want to distinguish between RenderEntities that share GPU data, and batch those calls together if possible
         for (size_t Idx = 0; Idx < Entities.NumActive; Idx++)
         {
@@ -1144,6 +1162,10 @@ bool GfxSystem::Init(UBG_GfxT* _GfxBackend)
 
     // TODO: Why is Depth passed as -2?
     MainCameraO.Ortho((float)GlobalEngine->Width, (float)GlobalEngine->Height, -2.0f);
+
+    v3f Pos{ 10.0f, 10.0f, 10.0f };
+    v3f LookAt{ 0.0f, 0.0f, 0.0f };
+    MainCameraP.Perspective(Pos, LookAt);
 
     // TODO: Check for correct init'd state here
     return true;

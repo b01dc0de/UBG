@@ -229,6 +229,7 @@ struct GfxSystem
     ListID<MeshInstStateT> MeshesInst;
 
     Camera MainCameraO;
+    Camera MainCameraP;
 
     void Draw();
     bool Init(UBG_GfxT* _GfxBackend);
